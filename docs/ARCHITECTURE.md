@@ -309,6 +309,7 @@ Each dependency must earn its place. Boring and well-maintained beats fashionabl
 | `ruff` | Formatter and linter in one fast tool |
 | `mypy` | Strict type checking of `kinesis` |
 | `fakeredis` | Redis semantics in unit and fault tests without a server |
+| `httpx2` | Transport for Starlette's `TestClient`, which has deprecated `httpx` for it. Dev only. Runtime code keeps `httpx` (ADR 0009) |
 
 ### Deliberately excluded
 

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import Field, StringConstraints, computed_field
+from pydantic import Field, StringConstraints, model_validator
 
 from kinesis.schemas.common import (
     CandidateId,
@@ -98,10 +98,15 @@ class HumanDecision(KinesisModel):
     time_to_decision_s: float | None = Field(default=None, ge=0)
     note: Annotated[str, StringConstraints(max_length=1000)] | None = None
 
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def agreed(self) -> bool | None:
-        """None when the model made no recommendation."""
-        if self.model_recommended is None:
-            return None
-        return self.choice.value == self.model_recommended.value
+    agreed: bool | None = Field(
+        default=None, description="choice == model_recommended; null when no recommendation"
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_agreed(cls, data: Any) -> Any:
+        """The server derives ``agreed``. A value supplied by the caller is overwritten."""
+        if isinstance(data, dict):
+            choice, rec = data.get("choice"), data.get("model_recommended")
+            data = {**data, "agreed": None if rec is None else str(choice) == str(rec)}
+        return data

@@ -1,0 +1,3053 @@
+{
+  "components": {
+    "schemas": {
+      "AnchorMode": {
+        "enum": [
+          "ONSET",
+          "MEAN"
+        ],
+        "title": "AnchorMode",
+        "type": "string"
+      },
+      "AnimationSelection": {
+        "additionalProperties": false,
+        "description": "What the animator selected in Blender.",
+        "properties": {
+          "armature": {
+            "maxLength": 63,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+            "title": "Armature",
+            "type": "string"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ContactTarget",
+            "default": {
+              "kind": "FLOOR_PLANE",
+              "plane_normal": [
+                0.0,
+                0.0,
+                1.0
+              ],
+              "plane_point": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "scene_id": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+            "title": "Scene Id",
+            "type": "string"
+          },
+          "target_bones": {
+            "items": {
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Target Bones",
+            "type": "array"
+          },
+          "temporal": {
+            "$ref": "#/components/schemas/TemporalScope"
+          }
+        },
+        "required": [
+          "scene_id",
+          "armature",
+          "target_bones",
+          "temporal"
+        ],
+        "title": "AnimationSelection",
+        "type": "object"
+      },
+      "ArmatureInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "bones": {
+            "items": {
+              "$ref": "#/components/schemas/BoneInfo"
+            },
+            "title": "Bones",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 63,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "bones"
+        ],
+        "title": "ArmatureInfo",
+        "type": "object"
+      },
+      "ArtifactKind": {
+        "enum": [
+          "PREVIEW_FRAMES",
+          "CONTEXT_FRAMES",
+          "FEATURES_JSON",
+          "SAMPLES_JSON",
+          "METRICS_JSON",
+          "CANDIDATE_BLEND",
+          "OUTPUT_BLEND",
+          "LOG"
+        ],
+        "title": "ArtifactKind",
+        "type": "string"
+      },
+      "ArtifactReference": {
+        "additionalProperties": false,
+        "description": "A file the server produced. Clients address it only by ``artifact_id``.\n\nA frame sequence is fetched one frame at a time with ``GET {uri}?frame=<index>``,\nwhere 0 <= index < frame_count.",
+        "properties": {
+          "artifact_id": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "first_frame": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Frame"
+          },
+          "frame_count": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Count"
+          },
+          "frame_step": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Step"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ArtifactKind"
+          },
+          "media_type": {
+            "maxLength": 100,
+            "title": "Media Type",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "uri": {
+            "pattern": "^/v1/artifacts/[a-z0-9_-]+$",
+            "title": "Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "kind",
+          "media_type",
+          "sha256",
+          "size_bytes",
+          "uri"
+        ],
+        "title": "ArtifactReference",
+        "type": "object"
+      },
+      "Body_upload_scene_v1_scenes_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_scene_v1_scenes_post",
+        "type": "object"
+      },
+      "BoneInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "deform": {
+            "default": true,
+            "title": "Deform",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 63,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "maxLength": 63,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "BoneInfo",
+        "type": "object"
+      },
+      "CandidateLabel": {
+        "enum": [
+          "A",
+          "B"
+        ],
+        "title": "CandidateLabel",
+        "type": "string"
+      },
+      "CandidateMetrics": {
+        "additionalProperties": false,
+        "description": "Objective metrics (docs/ALGORITHMS.md §4). Slip is measured on the ORIGINAL interval.",
+        "properties": {
+          "collateral_max_cm": {
+            "minimum": 0.0,
+            "title": "Collateral Max Cm",
+            "type": "number"
+          },
+          "contact_error_cm": {
+            "minimum": 0.0,
+            "title": "Contact Error Cm",
+            "type": "number"
+          },
+          "gate_reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Gate Reasons",
+            "type": "array"
+          },
+          "gated": {
+            "default": false,
+            "title": "Gated",
+            "type": "boolean"
+          },
+          "ik_unreachable_frames": {
+            "minimum": 0.0,
+            "title": "Ik Unreachable Frames",
+            "type": "integer"
+          },
+          "jerk_rms_ratio": {
+            "minimum": 0.0,
+            "title": "Jerk Rms Ratio",
+            "type": "number"
+          },
+          "joint_limit_violations": {
+            "minimum": 0.0,
+            "title": "Joint Limit Violations",
+            "type": "integer"
+          },
+          "objective_score": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Score"
+          },
+          "outside_window_max_cm": {
+            "minimum": 0.0,
+            "title": "Outside Window Max Cm",
+            "type": "number"
+          },
+          "penetration_max_cm": {
+            "minimum": 0.0,
+            "title": "Penetration Max Cm",
+            "type": "number"
+          },
+          "planted_displacement_cm_after": {
+            "minimum": 0.0,
+            "title": "Planted Displacement Cm After",
+            "type": "number"
+          },
+          "planted_displacement_cm_before": {
+            "minimum": 0.0,
+            "title": "Planted Displacement Cm Before",
+            "type": "number"
+          },
+          "root_deviation_cm": {
+            "minimum": 0.0,
+            "title": "Root Deviation Cm",
+            "type": "number"
+          },
+          "slip_reduction_pct": {
+            "maximum": 100.0,
+            "title": "Slip Reduction Pct",
+            "type": "number"
+          },
+          "target_deviation_rms_cm": {
+            "minimum": 0.0,
+            "title": "Target Deviation Rms Cm",
+            "type": "number"
+          }
+        },
+        "required": [
+          "planted_displacement_cm_before",
+          "planted_displacement_cm_after",
+          "slip_reduction_pct",
+          "contact_error_cm",
+          "penetration_max_cm",
+          "jerk_rms_ratio",
+          "joint_limit_violations",
+          "target_deviation_rms_cm",
+          "collateral_max_cm",
+          "outside_window_max_cm",
+          "root_deviation_cm",
+          "ik_unreachable_frames"
+        ],
+        "title": "CandidateMetrics",
+        "type": "object"
+      },
+      "CandidateParameters": {
+        "additionalProperties": false,
+        "description": "Deterministic repair knobs (docs/ALGORITHMS.md §3.1).",
+        "properties": {
+          "anchor_mode": {
+            "$ref": "#/components/schemas/AnchorMode"
+          },
+          "blend_frames": {
+            "maximum": 24.0,
+            "minimum": 0.0,
+            "title": "Blend Frames",
+            "type": "integer"
+          },
+          "height_clamp": {
+            "default": true,
+            "title": "Height Clamp",
+            "type": "boolean"
+          },
+          "lock_strength": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Lock Strength",
+            "type": "number"
+          },
+          "lock_yaw": {
+            "title": "Lock Yaw",
+            "type": "boolean"
+          },
+          "smoothing_window": {
+            "enum": [
+              0,
+              3,
+              5,
+              7,
+              9
+            ],
+            "title": "Smoothing Window",
+            "type": "integer"
+          },
+          "tolerance_cm": {
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Tolerance Cm",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lock_strength",
+          "anchor_mode",
+          "blend_frames",
+          "tolerance_cm",
+          "lock_yaw",
+          "smoothing_window"
+        ],
+        "title": "CandidateParameters",
+        "type": "object"
+      },
+      "CandidateStatus": {
+        "enum": [
+          "PENDING",
+          "RUNNING",
+          "SUCCEEDED",
+          "FAILED"
+        ],
+        "title": "CandidateStatus",
+        "type": "string"
+      },
+      "ComponentHealth": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "ok"
+        ],
+        "title": "ComponentHealth",
+        "type": "object"
+      },
+      "ContactKind": {
+        "enum": [
+          "FLOOR_PLANE",
+          "OBJECT"
+        ],
+        "title": "ContactKind",
+        "type": "string"
+      },
+      "ContactTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ContactKind",
+            "default": "FLOOR_PLANE"
+          },
+          "object_name": {
+            "anyOf": [
+              {
+                "maxLength": 63,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Name"
+          },
+          "plane_normal": {
+            "default": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Plane Normal",
+            "type": "array"
+          },
+          "plane_point": {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Plane Point",
+            "type": "array"
+          }
+        },
+        "title": "ContactTarget",
+        "type": "object"
+      },
+      "CreateRepairJobRequest": {
+        "additionalProperties": false,
+        "description": "The body of ``POST /v1/jobs``. Clients must also send an ``Idempotency-Key`` header.",
+        "properties": {
+          "plan_mode": {
+            "$ref": "#/components/schemas/PlanMode",
+            "default": "AUTO"
+          },
+          "repair_type": {
+            "$ref": "#/components/schemas/RepairType",
+            "default": "FOOT_CONTACT"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/AnimationSelection"
+          }
+        },
+        "required": [
+          "selection"
+        ],
+        "title": "CreateRepairJobRequest",
+        "type": "object"
+      },
+      "DecisionChoice": {
+        "enum": [
+          "A",
+          "B",
+          "REJECT_ALL"
+        ],
+        "title": "DecisionChoice",
+        "type": "string"
+      },
+      "DecisionRequest": {
+        "additionalProperties": false,
+        "description": "The body of ``POST /v1/jobs/{job_id}/decision``.",
+        "properties": {
+          "choice": {
+            "$ref": "#/components/schemas/DecisionChoice"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "time_to_decision_s": {
+            "anyOf": [
+              {
+                "maximum": 86400.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time To Decision S"
+          }
+        },
+        "required": [
+          "choice"
+        ],
+        "title": "DecisionRequest",
+        "type": "object"
+      },
+      "DefectReport": {
+        "additionalProperties": false,
+        "properties": {
+          "algorithm_version": {
+            "title": "Algorithm Version",
+            "type": "string"
+          },
+          "detection_config": {
+            "$ref": "#/components/schemas/DetectionConfig",
+            "default": {
+              "consistency_band_m": 0.01,
+              "floor_percentile": 5.0,
+              "gap_close_frames": 2,
+              "height_threshold_m": 0.025,
+              "min_run_frames": 6,
+              "severity_major_cm": 2.0,
+              "severity_minor_cm": 0.5,
+              "speed_threshold_m_s": 0.6
+            }
+          },
+          "intervals": {
+            "items": {
+              "$ref": "#/components/schemas/PlantedInterval"
+            },
+            "title": "Intervals",
+            "type": "array"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "summary": {
+            "maxLength": 1000,
+            "title": "Summary",
+            "type": "string"
+          },
+          "worst_interval_index": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worst Interval Index"
+          }
+        },
+        "required": [
+          "intervals",
+          "severity",
+          "summary",
+          "algorithm_version"
+        ],
+        "title": "DefectReport",
+        "type": "object"
+      },
+      "DetectionConfig": {
+        "additionalProperties": false,
+        "description": "Detection thresholds. Defaults are frozen under ALGORITHM_VERSION.",
+        "properties": {
+          "consistency_band_m": {
+            "default": 0.01,
+            "exclusiveMinimum": 0.0,
+            "maximum": 0.2,
+            "title": "Consistency Band M",
+            "type": "number"
+          },
+          "floor_percentile": {
+            "default": 5.0,
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Floor Percentile",
+            "type": "number"
+          },
+          "gap_close_frames": {
+            "default": 2,
+            "maximum": 12.0,
+            "minimum": 0.0,
+            "title": "Gap Close Frames",
+            "type": "integer"
+          },
+          "height_threshold_m": {
+            "default": 0.025,
+            "exclusiveMinimum": 0.0,
+            "maximum": 0.5,
+            "title": "Height Threshold M",
+            "type": "number"
+          },
+          "min_run_frames": {
+            "default": 6,
+            "maximum": 120.0,
+            "minimum": 1.0,
+            "title": "Min Run Frames",
+            "type": "integer"
+          },
+          "severity_major_cm": {
+            "default": 2.0,
+            "minimum": 0.0,
+            "title": "Severity Major Cm",
+            "type": "number"
+          },
+          "severity_minor_cm": {
+            "default": 0.5,
+            "minimum": 0.0,
+            "title": "Severity Minor Cm",
+            "type": "number"
+          },
+          "speed_threshold_m_s": {
+            "default": 0.6,
+            "exclusiveMinimum": 0.0,
+            "maximum": 10.0,
+            "title": "Speed Threshold M S",
+            "type": "number"
+          }
+        },
+        "title": "DetectionConfig",
+        "type": "object"
+      },
+      "ErrorCode": {
+        "enum": [
+          "SCENE_NOT_FOUND",
+          "JOB_NOT_FOUND",
+          "CANDIDATE_NOT_FOUND",
+          "ARTIFACT_NOT_FOUND",
+          "ARMATURE_NOT_FOUND",
+          "BONE_NOT_FOUND",
+          "INVALID_FRAME_RANGE",
+          "UNSUPPORTED_REPAIR_TYPE",
+          "UNSUPPORTED_RIG",
+          "INVALID_STATE",
+          "NOT_READY",
+          "IDEMPOTENCY_CONFLICT",
+          "FILE_INVALID",
+          "FILE_TOO_LARGE",
+          "VALIDATION_ERROR",
+          "NOT_IMPLEMENTED",
+          "PLAN_INVALID",
+          "PROVIDER_UNAVAILABLE",
+          "PROVIDER_TIMEOUT",
+          "PROVIDER_RATE_LIMITED",
+          "WORKER_CRASHED",
+          "WORKER_TIMEOUT",
+          "WORKER_OUTPUT_INVALID",
+          "RENDER_FAILED",
+          "NO_VIABLE_CANDIDATE",
+          "STORAGE_ERROR",
+          "INTERNAL"
+        ],
+        "title": "ErrorCode",
+        "type": "string"
+      },
+      "ErrorInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "message": {
+            "maxLength": 2000,
+            "title": "Message",
+            "type": "string"
+          },
+          "node": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node"
+          },
+          "retryable": {
+            "default": false,
+            "title": "Retryable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorInfo",
+        "type": "object"
+      },
+      "EvaluationReport": {
+        "additionalProperties": false,
+        "properties": {
+          "evaluator_status": {
+            "$ref": "#/components/schemas/EvaluatorStatus"
+          },
+          "objective_ranking": {
+            "items": {
+              "$ref": "#/components/schemas/ObjectiveRank"
+            },
+            "title": "Objective Ranking",
+            "type": "array"
+          },
+          "recommendation_reason": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Recommendation Reason",
+            "type": "string"
+          },
+          "recommended": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateLabel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scoring_weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Scoring Weights",
+            "type": "object"
+          },
+          "visual": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/VisualEvaluation"
+            },
+            "title": "Visual",
+            "type": "array"
+          }
+        },
+        "required": [
+          "objective_ranking",
+          "evaluator_status"
+        ],
+        "title": "EvaluationReport",
+        "type": "object"
+      },
+      "EvaluatorStatus": {
+        "enum": [
+          "OK",
+          "DEGRADED",
+          "SKIPPED"
+        ],
+        "title": "EvaluatorStatus",
+        "type": "string"
+      },
+      "EventPage": {
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/JobEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "next_seq": {
+            "description": "Pass as after_seq on the next poll",
+            "minimum": 0.0,
+            "title": "Next Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "events",
+          "next_seq"
+        ],
+        "title": "EventPage",
+        "type": "object"
+      },
+      "HealthReport": {
+        "additionalProperties": false,
+        "properties": {
+          "components": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ComponentHealth"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ],
+        "title": "HealthReport",
+        "type": "object"
+      },
+      "HumanDecision": {
+        "additionalProperties": false,
+        "description": "The stored decision. Comparing it with the model's recommendation gives the\nagreement metric.",
+        "properties": {
+          "agreed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "choice == model_recommended; null when no recommendation",
+            "title": "Agreed"
+          },
+          "candidate_id": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{16}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Id"
+          },
+          "choice": {
+            "$ref": "#/components/schemas/DecisionChoice"
+          },
+          "decided_at": {
+            "format": "date-time",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "job_id": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "model_recommended": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateLabel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "time_to_decision_s": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time To Decision S"
+          }
+        },
+        "required": [
+          "job_id",
+          "choice",
+          "decided_at"
+        ],
+        "title": "HumanDecision",
+        "type": "object"
+      },
+      "JobEvent": {
+        "additionalProperties": false,
+        "description": "An append-only progress event. ``(job_id, seq)`` is unique and ``seq`` starts at 1.",
+        "properties": {
+          "attempt": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt"
+          },
+          "candidate_id": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{16}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Id"
+          },
+          "data": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Data",
+            "type": "object"
+          },
+          "job_id": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Message",
+            "type": "string"
+          },
+          "node": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node"
+          },
+          "seq": {
+            "minimum": 1.0,
+            "title": "Seq",
+            "type": "integer"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/JobEventType"
+          }
+        },
+        "required": [
+          "seq",
+          "job_id",
+          "ts",
+          "type"
+        ],
+        "title": "JobEvent",
+        "type": "object"
+      },
+      "JobEventType": {
+        "enum": [
+          "STATUS_CHANGED",
+          "NODE_STARTED",
+          "NODE_SUCCEEDED",
+          "NODE_FAILED",
+          "NODE_SKIPPED",
+          "NODE_RETRY",
+          "CANDIDATE_UPDATED",
+          "PLAN_REJECTED"
+        ],
+        "title": "JobEventType",
+        "type": "string"
+      },
+      "JobStatus": {
+        "enum": [
+          "PENDING",
+          "RUNNING",
+          "AWAITING_DECISION",
+          "APPLYING",
+          "COMPLETED",
+          "REJECTED",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "title": "JobStatus",
+        "type": "string"
+      },
+      "JsonValue": {},
+      "ObjectiveRank": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_id": {
+            "pattern": "^[0-9a-f]{16}$",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "gated": {
+            "title": "Gated",
+            "type": "boolean"
+          },
+          "label": {
+            "$ref": "#/components/schemas/CandidateLabel"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "label",
+          "candidate_id",
+          "gated"
+        ],
+        "title": "ObjectiveRank",
+        "type": "object"
+      },
+      "PlanMode": {
+        "enum": [
+          "AUTO",
+          "DETERMINISTIC"
+        ],
+        "title": "PlanMode",
+        "type": "string"
+      },
+      "PlanSource": {
+        "enum": [
+          "MODEL",
+          "FALLBACK"
+        ],
+        "title": "PlanSource",
+        "type": "string"
+      },
+      "PlantedInterval": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Anchor",
+            "type": "array"
+          },
+          "contact_consistency": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Contact Consistency",
+            "type": "number"
+          },
+          "end": {
+            "maximum": 1048574.0,
+            "minimum": -1048574.0,
+            "title": "End",
+            "type": "integer"
+          },
+          "max_frame_slip_cm": {
+            "minimum": 0.0,
+            "title": "Max Frame Slip Cm",
+            "type": "number"
+          },
+          "mean_slip_velocity_cm_s": {
+            "minimum": 0.0,
+            "title": "Mean Slip Velocity Cm S",
+            "type": "number"
+          },
+          "path_slip_cm": {
+            "minimum": 0.0,
+            "title": "Path Slip Cm",
+            "type": "number"
+          },
+          "planted_displacement_cm": {
+            "minimum": 0.0,
+            "title": "Planted Displacement Cm",
+            "type": "number"
+          },
+          "start": {
+            "maximum": 1048574.0,
+            "minimum": -1048574.0,
+            "title": "Start",
+            "type": "integer"
+          },
+          "velocity_variance": {
+            "minimum": 0.0,
+            "title": "Velocity Variance",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "anchor",
+          "planted_displacement_cm",
+          "path_slip_cm",
+          "max_frame_slip_cm",
+          "mean_slip_velocity_cm_s",
+          "velocity_variance",
+          "contact_consistency"
+        ],
+        "title": "PlantedInterval",
+        "type": "object"
+      },
+      "Problem": {
+        "additionalProperties": false,
+        "description": "An RFC 7807 problem detail, extended with a machine-readable ``code``.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "errors": {
+            "default": [],
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instance"
+          },
+          "status": {
+            "maximum": 599.0,
+            "minimum": 400.0,
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "status",
+          "code"
+        ],
+        "title": "Problem",
+        "type": "object"
+      },
+      "ProductStats": {
+        "additionalProperties": false,
+        "description": "Product metrics computed from the store (docs/METRICS.md).",
+        "properties": {
+          "candidate_acceptance_rate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Acceptance Rate"
+          },
+          "cost_per_accepted_repair_usd": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Accepted Repair Usd"
+          },
+          "jobs_decided": {
+            "minimum": 0.0,
+            "title": "Jobs Decided",
+            "type": "integer"
+          },
+          "jobs_total": {
+            "minimum": 0.0,
+            "title": "Jobs Total",
+            "type": "integer"
+          },
+          "median_slip_reduction_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Slip Reduction Pct"
+          },
+          "median_time_to_decision_s": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Time To Decision S"
+          },
+          "model_human_agreement_rate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Human Agreement Rate"
+          }
+        },
+        "required": [
+          "jobs_total",
+          "jobs_decided"
+        ],
+        "title": "ProductStats",
+        "type": "object"
+      },
+      "RepairCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "algorithm_version": {
+            "default": "foot_contact/1",
+            "title": "Algorithm Version",
+            "type": "string"
+          },
+          "artifacts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ArtifactReference"
+            },
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "candidate_id": {
+            "pattern": "^[0-9a-f]{16}$",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "$ref": "#/components/schemas/CandidateLabel"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/CandidateParameters"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CandidateStatus",
+            "default": "PENDING"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "label",
+          "parameters"
+        ],
+        "title": "RepairCandidate",
+        "type": "object"
+      },
+      "RepairJob": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RepairCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HumanDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "defect": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DefectReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idempotency_key": {
+            "pattern": "^[A-Za-z0-9_.:-]{8,128}$",
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "job_id": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "last_event_seq": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Last Event Seq",
+            "type": "integer"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArtifactReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepairPlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "plan_mode": {
+            "$ref": "#/components/schemas/PlanMode"
+          },
+          "repair_type": {
+            "$ref": "#/components/schemas/RepairType"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/AnimationSelection"
+          },
+          "skeletal_scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SkeletalScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "idempotency_key",
+          "repair_type",
+          "plan_mode",
+          "selection",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RepairJob",
+        "type": "object"
+      },
+      "RepairPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CandidateParameters"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/CandidateLabel"
+            },
+            "title": "Candidates",
+            "type": "object"
+          },
+          "contact_target": {
+            "$ref": "#/components/schemas/ContactTarget"
+          },
+          "context_frames_after": {
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Context Frames After",
+            "type": "integer"
+          },
+          "context_frames_before": {
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Context Frames Before",
+            "type": "integer"
+          },
+          "explanation": {
+            "maxLength": 2000,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "frame_end": {
+            "maximum": 1048574.0,
+            "minimum": -1048574.0,
+            "title": "Frame End",
+            "type": "integer"
+          },
+          "frame_start": {
+            "maximum": 1048574.0,
+            "minimum": -1048574.0,
+            "title": "Frame Start",
+            "type": "integer"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "plan_source": {
+            "$ref": "#/components/schemas/PlanSource"
+          },
+          "preserve_non_target_bones": {
+            "const": true,
+            "default": true,
+            "title": "Preserve Non Target Bones",
+            "type": "boolean"
+          },
+          "preserve_root_motion": {
+            "const": true,
+            "default": true,
+            "title": "Preserve Root Motion",
+            "type": "boolean"
+          },
+          "repair_type": {
+            "$ref": "#/components/schemas/RepairType"
+          },
+          "target_bones": {
+            "items": {
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Target Bones",
+            "type": "array"
+          }
+        },
+        "required": [
+          "repair_type",
+          "target_bones",
+          "frame_start",
+          "frame_end",
+          "context_frames_before",
+          "context_frames_after",
+          "contact_target",
+          "candidates",
+          "explanation",
+          "plan_source"
+        ],
+        "title": "RepairPlan",
+        "type": "object"
+      },
+      "RepairType": {
+        "enum": [
+          "FOOT_CONTACT"
+        ],
+        "title": "RepairType",
+        "type": "string"
+      },
+      "SceneRef": {
+        "additionalProperties": false,
+        "description": "An uploaded scene, inspected on upload so that job requests can be validated.",
+        "properties": {
+          "armatures": {
+            "items": {
+              "$ref": "#/components/schemas/ArmatureInfo"
+            },
+            "title": "Armatures",
+            "type": "array"
+          },
+          "blender_version": {
+            "maxLength": 32,
+            "title": "Blender Version",
+            "type": "string"
+          },
+          "fps": {
+            "exclusiveMinimum": 0.0,
+            "title": "Fps",
+            "type": "number"
+          },
+          "frame_end": {
+            "title": "Frame End",
+            "type": "integer"
+          },
+          "frame_start": {
+            "title": "Frame Start",
+            "type": "integer"
+          },
+          "scene_id": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+            "title": "Scene Id",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scene_id",
+          "sha256",
+          "size_bytes",
+          "frame_start",
+          "frame_end",
+          "fps",
+          "blender_version",
+          "armatures"
+        ],
+        "title": "SceneRef",
+        "type": "object"
+      },
+      "Severity": {
+        "enum": [
+          "NONE",
+          "MINOR",
+          "MAJOR"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
+      "SkeletalScope": {
+        "additionalProperties": false,
+        "description": "The bone sets the repair works on, resolved by the server from the armature hierarchy.\n\n- ``chain_bones``: the bones whose motion may change, for example thigh, shin, foot, toe.\n- ``keyable_bones``: the subset of the chain that actually receives keys.\n- ``context_bones``: read-only ancestors, used for the hip position and root motion.",
+        "properties": {
+          "armature": {
+            "maxLength": 63,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+            "title": "Armature",
+            "type": "string"
+          },
+          "chain_bones": {
+            "items": {
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Chain Bones",
+            "type": "array"
+          },
+          "context_bones": {
+            "default": [],
+            "items": {
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Context Bones",
+            "type": "array"
+          },
+          "keyable_bones": {
+            "items": {
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Keyable Bones",
+            "type": "array"
+          },
+          "target_bones": {
+            "items": {
+              "maxLength": 63,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.\\-: ]+$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Target Bones",
+            "type": "array"
+          }
+        },
+        "required": [
+          "armature",
+          "target_bones",
+          "chain_bones",
+          "keyable_bones"
+        ],
+        "title": "SkeletalScope",
+        "type": "object"
+      },
+      "TemporalScope": {
+        "additionalProperties": false,
+        "description": "The requested frame range plus context padding.\n\n``context_start`` and ``context_end`` are derived properties, not serialized fields.\nThey are not clipped here. The server clips them to the scene range\nwhen it resolves the scope.",
+        "properties": {
+          "context_after": {
+            "default": 10,
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Context After",
+            "type": "integer"
+          },
+          "context_before": {
+            "default": 10,
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Context Before",
+            "type": "integer"
+          },
+          "frame_end": {
+            "maximum": 1048574.0,
+            "minimum": -1048574.0,
+            "title": "Frame End",
+            "type": "integer"
+          },
+          "frame_start": {
+            "maximum": 1048574.0,
+            "minimum": -1048574.0,
+            "title": "Frame Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "frame_start",
+          "frame_end"
+        ],
+        "title": "TemporalScope",
+        "type": "object"
+      },
+      "TokenUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "completion_tokens": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "prompt_tokens": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Prompt Tokens",
+            "type": "integer"
+          }
+        },
+        "title": "TokenUsage",
+        "type": "object"
+      },
+      "VisualEvaluation": {
+        "additionalProperties": false,
+        "description": "A structured multimodal judgement of one candidate against the original.\n\nScores run from 1 (bad) to 5 (good). For ``artifacts_visible``, 5 means *no* visible\nartifacts.",
+        "properties": {
+          "artifacts_visible": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Artifacts Visible",
+            "type": "integer"
+          },
+          "candidate_id": {
+            "pattern": "^[0-9a-f]{16}$",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "contact_stability": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Contact Stability",
+            "type": "integer"
+          },
+          "instruction_adherence": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Instruction Adherence",
+            "type": "integer"
+          },
+          "latency_ms": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "model_id": {
+            "maxLength": 200,
+            "title": "Model Id",
+            "type": "string"
+          },
+          "naturalness": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Naturalness",
+            "type": "integer"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "performance_preservation": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Performance Preservation",
+            "type": "integer"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/TokenUsage",
+            "default": {
+              "completion_tokens": 0,
+              "prompt_tokens": 0
+            }
+          }
+        },
+        "required": [
+          "candidate_id",
+          "contact_stability",
+          "naturalness",
+          "artifacts_visible",
+          "performance_preservation",
+          "instruction_adherence",
+          "model_id"
+        ],
+        "title": "VisualEvaluation",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "AI plans and evaluates; deterministic code executes; the animator decides. Every error body is an RFC 7807 Problem carrying a machine-readable `code`.",
+    "summary": "Localized animation repair: measure, propose, compare, apply.",
+    "title": "Kinesis API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/artifacts/{artifact_id}": {
+      "get": {
+        "operationId": "get_artifact_v1_artifacts__artifact_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "frame",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 10000,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Frame"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {},
+              "application/octet-stream": {},
+              "image/jpeg": {}
+            },
+            "description": "Artifact bytes"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Download an artifact (or one frame of a frame sequence)",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "operationId": "health_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/health/providers": {
+      "get": {
+        "operationId": "provider_health_v1_health_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Model provider, Redis and Blender reachability",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/jobs": {
+      "post": {
+        "description": "Validates the selection against the uploaded scene's inventory (armature, bones, frame range) and schedules the repair DAG. A replay with the same `Idempotency-Key` and body returns 200 with the existing job. The same key with a different body returns 409 IDEMPOTENCY_CONFLICT.",
+        "operationId": "create_job_v1_jobs_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_.:-]{8,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRepairJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairJob"
+                }
+              }
+            },
+            "description": "Idempotent replay: the existing job"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Create a repair job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_job_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Get a job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_job_v1_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Cancel a non-terminal job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{job_id}/candidates": {
+      "get": {
+        "operationId": "list_candidates_v1_jobs__job_id__candidates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RepairCandidate"
+                  },
+                  "title": "Response List Candidates V1 Jobs  Job Id  Candidates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "List repair candidates",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{job_id}/candidates/{candidate_id}/metrics": {
+      "get": {
+        "operationId": "get_candidate_metrics_v1_jobs__job_id__candidates__candidate_id__metrics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{16}$",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateMetrics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Objective metrics for one candidate",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{job_id}/decision": {
+      "post": {
+        "description": "Allowed only in AWAITING_DECISION (otherwise 409 INVALID_STATE). Choosing A or B schedules the non-destructive apply (status APPLYING). REJECT_ALL moves the job to REJECTED. Choosing a FAILED candidate returns 422.",
+        "operationId": "post_decision_v1_jobs__job_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Record the animator's choice",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{job_id}/defect": {
+      "get": {
+        "operationId": "get_defect_v1_jobs__job_id__defect_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Deterministic defect report (409 NOT_READY until analysis completes)",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{job_id}/evaluation": {
+      "get": {
+        "operationId": "get_evaluation_v1_jobs__job_id__evaluation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Combined objective + model evaluation",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{job_id}/events": {
+      "get": {
+        "operationId": "list_events_v1_jobs__job_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after_seq",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "After Seq",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Poll job events after a sequence number",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/metrics": {
+      "get": {
+        "operationId": "metrics_v1_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {}
+            },
+            "description": "Prometheus exposition"
+          }
+        },
+        "summary": "Prometheus metrics",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/scenes": {
+      "post": {
+        "description": "Accepts a single `.blend` file (at most KINESIS_MAX_UPLOAD_MB; it must start with the `BLENDER` magic bytes). The client filename is ignored. The file is stored as `input/scene.blend` in a new scene directory and inspected headlessly with auto-run scripts disabled.",
+        "operationId": "upload_scene_v1_scenes_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_scene_v1_scenes_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneRef"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Upload a .blend copy and inspect it",
+        "tags": [
+          "scenes"
+        ]
+      }
+    },
+    "/v1/scenes/{scene_id}": {
+      "get": {
+        "operationId": "get_scene_v1_scenes__scene_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{5,63}$",
+              "title": "Scene Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneRef"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Get an uploaded scene's inventory",
+        "tags": [
+          "scenes"
+        ]
+      }
+    },
+    "/v1/stats/product": {
+      "get": {
+        "operationId": "product_stats_v1_stats_product_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              },
+              "application/problem+json": {}
+            },
+            "description": "Problem"
+          }
+        },
+        "summary": "Product metrics (acceptance, agreement, slip reduction, cost)",
+        "tags": [
+          "ops"
+        ]
+      }
+    }
+  }
+}

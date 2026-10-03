@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Self
 
-from pydantic import Field, StringConstraints, computed_field, model_validator
+from pydantic import Field, StringConstraints, model_validator
 
 from kinesis.schemas.common import BlenderName, Frame, Identifier, KinesisModel, Vec3
 
@@ -16,7 +16,8 @@ DEFAULT_CONTEXT_FRAMES = 10
 class TemporalScope(KinesisModel):
     """The requested frame range plus context padding.
 
-    The ``context_*`` fields are not clipped here. The server clips them to the scene range
+    ``context_start`` and ``context_end`` are derived properties, not serialized fields.
+    They are not clipped here. The server clips them to the scene range
     when it resolves the scope.
     """
 
@@ -33,12 +34,10 @@ class TemporalScope(KinesisModel):
             raise ValueError(f"context window exceeds {MAX_CONTEXT_FRAMES} frames")
         return self
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def context_start(self) -> int:
         return self.frame_start - self.context_before
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def context_end(self) -> int:
         return self.frame_end + self.context_after
