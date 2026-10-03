@@ -1,0 +1,16 @@
+{
+  "fixture": "foot_slide_v1",
+  "frame_range": [1, 120],
+  "fps": 24,
+  "armature": "Rig",
+  "target_bone": "foot.L",
+  "planted_interval": [40, 90],
+  "defect_window": [50, 80],
+  "injected_slide_m": 0.10,
+  "expected": {
+    "detected_interval_tolerance_frames": 2,
+    "planted_displacement_cm": {"min": 9.5, "max": 10.5},
+    "severity": "MAJOR"
+  },
+  "selection_for_tests": {"frame_start": 45, "frame_end": 90, "context_before": 10, "context_after": 10}
+}
