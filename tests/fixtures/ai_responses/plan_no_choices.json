@@ -1,0 +1,22 @@
+{
+  "description": "200 with an empty choices array.",
+  "task": "plan",
+  "kind": "http",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": "chatcmpl-synthetic",
+    "object": "chat.completion",
+    "created": 1790000000,
+    "model": "nvidia/nemotron-3-super-placeholder",
+    "choices": [],
+    "usage": {
+      "prompt_tokens": 812,
+      "completion_tokens": 164,
+      "total_tokens": 976
+    }
+  },
+  "expect": "fallback"
+}

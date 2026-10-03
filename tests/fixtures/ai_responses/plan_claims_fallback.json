@@ -1,0 +1,31 @@
+{
+  "description": "The model tries to set provenance fields it does not own.",
+  "task": "plan",
+  "kind": "http",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": "chatcmpl-synthetic",
+    "object": "chat.completion",
+    "created": 1790000000,
+    "model": "nvidia/nemotron-3-super-placeholder",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\"repair_type\": \"FOOT_CONTACT\", \"target_bones\": [\"foot.L\"], \"frame_start\": 45, \"frame_end\": 90, \"context_frames_before\": 10, \"context_frames_after\": 10, \"candidates\": {\"A\": {\"lock_strength\": 1.0, \"anchor_mode\": \"ONSET\", \"blend_frames\": 3, \"tolerance_cm\": 0.2, \"lock_yaw\": true, \"smoothing_window\": 0, \"height_clamp\": true}, \"B\": {\"lock_strength\": 0.8, \"anchor_mode\": \"MEAN\", \"blend_frames\": 10, \"tolerance_cm\": 1.0, \"lock_yaw\": false, \"smoothing_window\": 5, \"height_clamp\": true}}, \"explanation\": \"Left foot is planted 40-90 but drifts ~10 cm along +X from frame 50. A locks at touchdown; B spreads a softer correction.\", \"plan_source\": \"FALLBACK\", \"model_id\": \"me\"}"
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 812,
+      "completion_tokens": 164,
+      "total_tokens": 976
+    }
+  },
+  "expect": "fallback"
+}

@@ -1,0 +1,31 @@
+{
+  "description": "200 with empty content.",
+  "task": "plan",
+  "kind": "http",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": "chatcmpl-synthetic",
+    "object": "chat.completion",
+    "created": 1790000000,
+    "model": "nvidia/nemotron-3-super-placeholder",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": ""
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 812,
+      "completion_tokens": 164,
+      "total_tokens": 976
+    }
+  },
+  "expect": "fallback"
+}

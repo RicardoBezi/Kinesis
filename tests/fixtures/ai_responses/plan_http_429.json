@@ -1,0 +1,17 @@
+{
+  "description": "Rate limited, with Retry-After.",
+  "task": "plan",
+  "kind": "http",
+  "status": 429,
+  "headers": {
+    "content-type": "application/json",
+    "retry-after": "2"
+  },
+  "body": {
+    "error": {
+      "message": "Rate limit exceeded",
+      "type": "rate_limit_error"
+    }
+  },
+  "expect": "retryable_error"
+}

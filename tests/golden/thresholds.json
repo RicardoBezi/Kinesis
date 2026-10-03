@@ -1,0 +1,24 @@
+{
+  "fixture": "foot_slide_v1",
+  "algorithm_version": "foot_contact/1",
+  "status": "initial: recalibrate in Phase 2 and record measured values in foot_slide_v1.json",
+  "detection": {
+    "planted_displacement_cm": {"min": 9.5, "max": 10.5},
+    "interval_tolerance_frames": 2,
+    "severity": "MAJOR"
+  },
+  "candidates": {
+    "best": {"slip_reduction_pct_min": 80.0},
+    "A": {"slip_reduction_pct_min": 95.0},
+    "B": {"slip_reduction_pct_min": 70.0}
+  },
+  "all_candidates": {
+    "collateral_max_cm_max": 0.01,
+    "outside_window_max_cm_max": 0.001,
+    "joint_limit_violations_max": 0,
+    "penetration_max_cm_max": 0.5,
+    "jerk_rms_ratio_max": 1.5,
+    "ik_unreachable_frames_max": 0
+  },
+  "blender_vs_numpy_mirror_max_mm": 0.1
+}

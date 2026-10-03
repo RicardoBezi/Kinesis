@@ -1,0 +1,31 @@
+{
+  "description": "Valid structured visual judgement.",
+  "task": "evaluate",
+  "kind": "http",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "id": "chatcmpl-synthetic",
+    "object": "chat.completion",
+    "created": 1790000000,
+    "model": "nvidia/nemotron-3-nano-omni-placeholder",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\"contact_stability\": 5, \"naturalness\": 4, \"artifacts_visible\": 5, \"performance_preservation\": 4, \"instruction_adherence\": 4, \"notes\": \"Foot stays planted; slight stiffness at release.\", \"prefers_over_original\": true}"
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 812,
+      "completion_tokens": 164,
+      "total_tokens": 976
+    }
+  },
+  "expect": "accepted"
+}

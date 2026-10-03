@@ -1,0 +1,16 @@
+{
+  "description": "Bad request (for example, unknown model id). Not retryable and not a breaker failure.",
+  "task": "plan",
+  "kind": "http",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "error": {
+      "message": "model not found",
+      "type": "invalid_request_error"
+    }
+  },
+  "expect": "fatal_error"
+}

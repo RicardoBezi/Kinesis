@@ -1,0 +1,16 @@
+{
+  "description": "Upstream 5xx.",
+  "task": "plan",
+  "kind": "http",
+  "status": 500,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": {
+    "error": {
+      "message": "Internal error",
+      "type": "server_error"
+    }
+  },
+  "expect": "retryable_error"
+}

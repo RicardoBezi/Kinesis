@@ -1,0 +1,6 @@
+{
+  "description": "No response within the client timeout.",
+  "task": "plan",
+  "kind": "timeout",
+  "expect": "retryable_error"
+}
