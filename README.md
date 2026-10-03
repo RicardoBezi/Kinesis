@@ -18,7 +18,7 @@ The MVP handles one repair class: **foot-contact / foot-sliding repair in Blende
 
 ## Status
 
-**Phase 0: design freeze.** The architecture, data contracts, API contracts, test strategy, CI and spikes are defined. Feature implementation starts in Phase 1. See [docs/PRODUCT.md](docs/PRODUCT.md#implementation-phases).
+**Phase 0: design freeze (complete).** The architecture, data contracts, API contracts, test strategy, CI and spikes are defined. [docs/PHASE0.md](docs/PHASE0.md) indexes every deliverable and lists the open concerns. Feature implementation starts in Phase 1; see [docs/PRODUCT.md](docs/PRODUCT.md#implementation-phases).
 
 ## Repository map
 
