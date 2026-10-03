@@ -1,6 +1,6 @@
 # ADR 0003: Pure-numpy core, thin Blender worker
 
-**Status:** Accepted, pending spike S2 (FK/IK parity)
+**Status:** Accepted. Spike S2 passed on 2026-10-03: max joint error 6.3e-7 m against a 1e-4 m threshold (Blender 4.5.14)
 
 ## Context
 Blender's Python API only exists inside a Blender process. Installing Blender in every CI job is slow, and rendering may need a GPU. If the repair ran through Blender constraints (an IK constraint, then a bake), the logic would be hard to unit-test and would depend on Blender behaviour that changes between versions.

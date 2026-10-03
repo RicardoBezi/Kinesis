@@ -15,6 +15,8 @@ on:
       - "backend/src/kinesis/schemas/**"
       - "tests/integration/**"
       - "tests/golden/**"
+      - "spikes/s[123]_*.py"
+      - "scripts/tasks.py"
       - ".github/workflows/blender.yml"
   pull_request:
     paths:
@@ -25,6 +27,8 @@ on:
       - "backend/src/kinesis/schemas/**"
       - "tests/integration/**"
       - "tests/golden/**"
+      - "spikes/s[123]_*.py"
+      - "scripts/tasks.py"
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
@@ -59,7 +63,24 @@ jobs:
       - name: download Blender (checksum-verified)
         if: steps.cache.outputs.cache-hit != 'true'
         run: uv run task setup-blender
+      - name: spikes S1-S3 (results uploaded as an artifact)
+        env:
+          KINESIS_BLENDER_BIN: ${{ github.workspace }}/.tools/blender-${{ env.BLENDER_VERSION }}-linux-x64/blender
+        run: |
+          status=0
+          for s in s1_nla_layering s2_fk_parity s3_headless_render; do
+            "$KINESIS_BLENDER_BIN" --background --factory-startup -noaudio --python-exit-code 3 \
+              --python "spikes/$s.py" -- --out "var/spikes/$s.json" || status=1
+          done
+          cat var/spikes/*.json || true
+          exit $status
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-results
+          path: var/spikes/
       - name: run Blender tests
+        if: always()
         env:
           KINESIS_BLENDER_BIN: ${{ github.workspace }}/.tools/blender-${{ env.BLENDER_VERSION }}-linux-x64/blender
         run: |
