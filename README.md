@@ -1,0 +1,56 @@
+# Kinesis
+
+**Kinesis cuts the time animators spend fixing localized animation defects.**
+
+Here is the workflow. An animator selects a body region, a frame range, and optionally a contact surface or a written instruction. Kinesis then:
+
+- measures the defect;
+- builds several non-destructive repair candidates in parallel;
+- renders cropped previews of each;
+- scores each candidate with deterministic metrics and NVIDIA Nemotron multimodal reasoning;
+- presents an A/B comparison.
+
+The animator picks one, and Kinesis applies it as a separate, reversible animation layer.
+
+> AI **plans and evaluates**. Deterministic code **executes**. The human **decides**.
+
+The MVP handles one repair class: **foot-contact / foot-sliding repair in Blender**.
+
+## Status
+
+**Phase 0: design freeze.** The architecture, data contracts, API contracts, test strategy, CI and spikes are defined. Feature implementation starts in Phase 1. See [docs/PRODUCT.md](docs/PRODUCT.md#implementation-phases).
+
+## Repository map
+
+| Path | What |
+|---|---|
+| [docs/](docs/) | Product, architecture, algorithms, API, testing, failure modes, metrics, deployment, ADRs |
+| [backend/](backend/) | FastAPI service, Pydantic contracts, orchestration, pure-numpy analysis/repair/evaluation |
+| [blender/](blender/) | Thin Blender worker (inspect / extract / apply+render / export), add-on, fixture builder |
+| [client/kotlin-desktop/](client/kotlin-desktop/) | Compose Desktop review client |
+| [infra/](infra/) | Dockerfiles, Nebius deployment notes |
+| [spikes/](spikes/) | Small experiments that check assumptions about Blender and Nebius before we depend on them |
+| [tests/](tests/) | unit, contract, fault, golden, integration |
+| [scripts/tasks.py](scripts/tasks.py) | Cross-platform task runner (`uv run task <name>`) |
+
+## Quick start
+
+Prerequisites:
+- [uv](https://docs.astral.sh/uv/)
+- Git
+- Optional: Docker Desktop, Blender 4.5 LTS, JDK 17+ (the Gradle toolchain downloads one automatically)
+
+```bash
+uv run task setup          # install Python deps, create .env from .env.example
+uv run task test           # unit + contract + fault + API tests (no network, no Blender)
+uv run task lint           # ruff format check, ruff lint, mypy --strict
+uv run task run            # FastAPI on http://127.0.0.1:8000  (docs at /docs)
+uv run task setup-blender  # optional: portable Blender 4.5 LTS into .tools/
+docker compose up          # optional: API + Redis in containers
+```
+
+Run `uv run task --help` to list every task. Normal development and the full test suite never require Nebius credentials.
+
+## License
+
+The code is under the MIT license. The procedurally generated test fixtures are CC0.

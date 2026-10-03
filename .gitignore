@@ -1,0 +1,43 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Runtime data (job dirs, sqlite, artifacts)
+var/
+
+# Local tool downloads (portable Blender, etc.)
+.tools/
+
+# Blender autosave / backups
+*.blend1
+*.blend2
+
+# Kotlin / Gradle
+.gradle/
+client/kotlin-desktop/build/
+client/kotlin-desktop/**/build/
+.kotlin/
+*.iml
+.idea/
+local.properties
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
