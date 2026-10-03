@@ -140,3 +140,11 @@ def test_openapi_contains_frozen_contract() -> None:
     assert not missing, missing
     assert not [s for s in schemas if s.endswith(("-Input", "-Output"))]
     assert "HTTPValidationError" not in schemas
+
+
+def test_kotlin_samples_are_current() -> None:
+    import export_samples
+
+    for name, text in export_samples.render().items():
+        path = export_samples.OUT / name
+        assert path.read_text(encoding="utf-8") == text, f"{name} stale: run `uv run task openapi`"

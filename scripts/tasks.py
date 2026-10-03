@@ -190,9 +190,12 @@ def run_api(args: list[str]) -> int:
     )
 
 
-@task("openapi", "Export docs/api/openapi.json (use --check to fail on drift)")
+@task("openapi", "Export docs/api/openapi.json + Kotlin test samples (--check fails on drift)")
 def openapi(args: list[str]) -> int:
-    return run([sys.executable, str(ROOT / "scripts" / "export_openapi.py"), *args])
+    return run_all(
+        [sys.executable, str(ROOT / "scripts" / "export_openapi.py"), *args],
+        [sys.executable, str(ROOT / "scripts" / "export_samples.py"), *args],
+    )
 
 
 @task("fixture", "Regenerate blender/fixtures/foot_slide_v1.blend through Blender")

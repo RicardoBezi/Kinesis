@@ -14,3 +14,17 @@ Hand-written copies of the backend DTOs drift away from the backend over time.
 ## Consequences
 - A schema change shows up as a Kotlin compile error.
 - Generator quirks are controlled by pinning the generator version and config. Serialization round-trip tests against sample JSON cover them.
+
+## Rules for schema authors
+
+These rules were learned in Phase 0 by running the generator. Each one keeps the generated Kotlin types clean.
+
+| Rule | Reason |
+|---|---|
+| Fixed-length tuples (`Vec3`) declare a plain `array` + `items` schema via `WithJsonSchema` | `prefixItems` generates `List<Any>`, which kotlinx cannot serialize |
+| No `Literal[True]` or integer `Literal[...]` fields. Use `bool` or `int` plus a validator | The generator turns them into string-serialized enums, which mismatch the wire format |
+| No `computed_field` on API models. Use stored fields or plain properties | Computed fields split schemas into `-Input` and `-Output` variants |
+| Free-form JSON is typed as `JsonValue` | Mapped to `kotlinx.serialization.json.JsonElement` through `typeMappings` and `importMappings` |
+| JSON `number` maps to `kotlin.Double` | Avoids `BigDecimal`, which has no default kotlinx serializer. A post-generation step in `build.gradle.kts` rewrites the generator's BigDecimal-style defaults |
+
+`scripts/export_samples.py` builds sample payloads from the real Pydantic models, and the Kotlin tests decode them. CI drift checks keep both the samples and `openapi.json` current.

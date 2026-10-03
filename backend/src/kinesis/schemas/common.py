@@ -11,7 +11,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, WithJsonSchema
 
 
 class KinesisModel(BaseModel):
@@ -21,7 +21,12 @@ class KinesisModel(BaseModel):
 
 
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
-Vec3 = tuple[FiniteFloat, FiniteFloat, FiniteFloat]
+Vec3 = Annotated[
+    tuple[FiniteFloat, FiniteFloat, FiniteFloat],
+    # The JSON schema is a plain fixed-length number array, not `prefixItems`, so generated
+    # clients (Kotlin) get List<Double> rather than List<Any>.
+    WithJsonSchema({"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}),
+]
 """World-space vector in meters (Blender convention, Z-up)."""
 
 Frame = Annotated[int, Field(ge=-1_048_574, le=1_048_574)]  # Blender's frame limits

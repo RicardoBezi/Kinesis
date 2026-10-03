@@ -10,9 +10,9 @@ A plan that fails either step is never executed.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Literal, Self
+from typing import Annotated, Self
 
-from pydantic import Field, StringConstraints, model_validator
+from pydantic import Field, StringConstraints, field_validator, model_validator
 
 from kinesis.schemas.common import BlenderName, CandidateLabel, Frame, KinesisModel, RepairType
 from kinesis.schemas.scope import ContactTarget
@@ -23,6 +23,9 @@ class AnchorMode(StrEnum):
     MEAN = "MEAN"
 
 
+SMOOTHING_WINDOWS = frozenset({0, 3, 5, 7, 9})
+
+
 class CandidateParameters(KinesisModel):
     """Deterministic repair knobs (docs/ALGORITHMS.md §3.1)."""
 
@@ -31,8 +34,15 @@ class CandidateParameters(KinesisModel):
     blend_frames: int = Field(ge=0, le=24)
     tolerance_cm: float = Field(ge=0.0, le=5.0)
     lock_yaw: bool
-    smoothing_window: Literal[0, 3, 5, 7, 9]
+    smoothing_window: int = Field(ge=0, le=9, description="One of 0, 3, 5, 7, 9")
     height_clamp: bool = True
+
+    @field_validator("smoothing_window")
+    @classmethod
+    def _odd_window(cls, v: int) -> int:
+        if v not in SMOOTHING_WINDOWS:
+            raise ValueError(f"smoothing_window must be one of {sorted(SMOOTHING_WINDOWS)}")
+        return v
 
 
 CANDIDATE_A_DEFAULT = CandidateParameters(
@@ -72,8 +82,8 @@ class RepairPlan(KinesisModel):
     context_frames_before: int = Field(ge=0, le=120)
     context_frames_after: int = Field(ge=0, le=120)
     contact_target: ContactTarget
-    preserve_root_motion: Literal[True] = True
-    preserve_non_target_bones: Literal[True] = True
+    preserve_root_motion: bool = Field(default=True, description="Always true in the MVP")
+    preserve_non_target_bones: bool = Field(default=True, description="Always true in the MVP")
     candidates: dict[CandidateLabel, CandidateParameters]
     explanation: Annotated[str, StringConstraints(max_length=2000)]
     plan_source: PlanSource
@@ -88,6 +98,8 @@ class RepairPlan(KinesisModel):
             raise ValueError("plan must define exactly candidates A and B")
         if len(set(self.target_bones)) != len(self.target_bones):
             raise ValueError("target_bones must be unique")
+        if not (self.preserve_root_motion and self.preserve_non_target_bones):
+            raise ValueError("preservation flags cannot be disabled")
         if self.plan_source is PlanSource.MODEL and self.model_id is None:
             raise ValueError("model plans must record model_id")
         if self.plan_source is PlanSource.FALLBACK and self.fallback_reason is None:
