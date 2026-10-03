@@ -1,0 +1,79 @@
+# Workspace root: dev tooling, task runner, and shared tool configuration.
+# The service itself is the `kinesis` package in backend/.
+[project]
+name = "kinesis-workspace"
+version = "0.0.0"
+description = "Kinesis monorepo workspace (task runner + dev tooling)"
+requires-python = ">=3.12,<3.13"
+dependencies = ["kinesis"]
+
+[project.scripts]
+task = "tasks:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "hypothesis>=6.112",
+  "ruff>=0.7",
+  "mypy>=1.13",
+  "fakeredis>=2.26",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["scripts"]
+sources = ["scripts"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.uv.workspace]
+members = ["backend"]
+
+[tool.uv.sources]
+kinesis = { workspace = true }
+
+# ---------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["blender/", "spikes/s1_nla_layering.py", "spikes/s2_fk_parity.py", "spikes/s3_headless_render.py", "client/"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S", "PT", "ASYNC", "N"]
+ignore = ["S101"]  # assert is fine in tests and invariants
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/tasks.py" = ["S603", "S607"]  # fixed-argv subprocess calls are the point of this file
+"tests/**" = ["S105", "S106"]
+
+# ---------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["backend/src/kinesis", "scripts"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# ---------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = ["-ra", "--strict-markers", "-m", "not blender and not live_nebius"]
+markers = [
+  "blender: requires a Blender 4.5 executable (KINESIS_BLENDER_BIN); run via `uv run task test-blender`",
+  "live_nebius: calls real Nebius Token Factory; requires KINESIS_LIVE_NEBIUS=1 and NEBIUS_API_KEY",
+  "golden: golden regression thresholds on the canonical fixture",
+  "fault: fault-injection scenarios",
+  "contract: AI provider contract tests against recorded/synthetic responses",
+]
+filterwarnings = ["error"]
