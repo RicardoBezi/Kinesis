@@ -46,7 +46,10 @@ extend-exclude = ["blender/", "spikes/s1_nla_layering.py", "spikes/s2_fk_parity.
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S", "PT", "ASYNC", "N"]
-ignore = ["S101"]  # assert is fine in tests and invariants
+ignore = [
+  "S101",  # assert is fine in tests and invariants
+  "N818",  # exception names describe the condition (WorkerCrashed, CircuitOpen)
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["kinesis", "tasks"]
