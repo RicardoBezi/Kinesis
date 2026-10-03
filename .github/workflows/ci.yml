@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: python (format, lint, types, tests)
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 2s --health-retries 10
+    env:
+      KINESIS_REDIS_URL: redis://localhost:6379/0
+      KINESIS_PROVIDER: "null"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: format
+        run: uv run ruff format --check .
+      - name: lint
+        run: uv run ruff check --output-format=github .
+      - name: type check
+        run: uv run mypy
+      - name: tests (unit, contract, fault, golden-mirror, API)
+        run: uv run pytest -m "not blender and not live_nebius"
+
+  openapi-drift:
+    name: openapi drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run task openapi --check
+
+  kotlin:
+    name: kotlin client (build + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client/kotlin-desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew --no-daemon build
+
+  docker:
+    name: backend image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/backend.Dockerfile
+          push: false
+          tags: kinesis-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

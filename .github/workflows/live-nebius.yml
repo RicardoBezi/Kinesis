@@ -1,0 +1,25 @@
+name: live-nebius
+
+# Calls the real Nebius Token Factory API. Manual dispatch only. No merge gate depends on it.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    environment: nebius
+    env:
+      KINESIS_LIVE_NEBIUS: "1"
+      KINESIS_PROVIDER: token_factory
+      NEBIUS_API_KEY: ${{ secrets.NEBIUS_API_KEY }}
+      KINESIS_TF_BASE_URL: ${{ vars.KINESIS_TF_BASE_URL }}
+      KINESIS_PLANNER_MODEL: ${{ vars.KINESIS_PLANNER_MODEL }}
+      KINESIS_VISION_MODEL: ${{ vars.KINESIS_VISION_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run pytest -m live_nebius

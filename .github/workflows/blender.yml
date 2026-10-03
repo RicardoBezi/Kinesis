@@ -1,0 +1,67 @@
+name: blender
+
+# Headless Blender 4.5 LTS integration and golden tests. These are not yet a required gate:
+# spike S3 must first show that GPU-less rendering is reliable on hosted runners
+# (docs/DEPLOYMENT.md#ci).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "blender/**"
+      - "backend/src/kinesis/analysis/**"
+      - "backend/src/kinesis/repair/**"
+      - "backend/src/kinesis/evaluation/**"
+      - "backend/src/kinesis/schemas/**"
+      - "tests/integration/**"
+      - "tests/golden/**"
+      - ".github/workflows/blender.yml"
+  pull_request:
+    paths:
+      - "blender/**"
+      - "backend/src/kinesis/analysis/**"
+      - "backend/src/kinesis/repair/**"
+      - "backend/src/kinesis/evaluation/**"
+      - "backend/src/kinesis/schemas/**"
+      - "tests/integration/**"
+      - "tests/golden/**"
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BLENDER_VERSION: "4.5.14"
+  BLENDER_SHA256: "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3"
+
+jobs:
+  blender:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: system libraries for headless Blender (EGL / software GL)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libglx-mesa0 libgles2 libxi6 libxkbcommon0 libxrender1 libxxf86vm1 libsm6
+      - name: cache Blender
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: blender-${{ env.BLENDER_VERSION }}-linux-x64
+      - name: download Blender (checksum-verified)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: uv run task setup-blender
+      - name: run Blender tests
+        env:
+          KINESIS_BLENDER_BIN: ${{ github.workspace }}/.tools/blender-${{ env.BLENDER_VERSION }}-linux-x64/blender
+        run: |
+          "$KINESIS_BLENDER_BIN" --version
+          uv run pytest -m blender
