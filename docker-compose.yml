@@ -1,0 +1,33 @@
+# Local stack: `docker compose up`  ->  API on http://localhost:8000/docs
+# Blender runs on the host (KINESIS_BLENDER_BIN) until the Phase 6 `worker` profile exists.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      KINESIS_DATA_DIR: /data
+      KINESIS_REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./var:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  redis:
+    image: redis:7-alpine
+    # Cache only (ADR 0005): no persistence.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10

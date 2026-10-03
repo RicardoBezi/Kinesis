@@ -1,0 +1,17 @@
+.git
+.venv
+.tools
+var
+.env
+**/__pycache__
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.hypothesis
+client
+blender
+docs
+spikes
+tests
+*.blend
+*.blend1
