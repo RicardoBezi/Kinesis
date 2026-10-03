@@ -6,7 +6,7 @@ Each spike is a small, self-contained experiment with one question and a pass cr
 |---|---|---|---|
 | **S1** | Does a per-candidate Action on an NLA Replace track stay bone-restricted, leave the original Action byte-identical, and survive save and reload? Does the slotted-action API work for it? | ADR 0004, Phase 2 | ✅ passes with the *pushed-original* layout; ❌ with the active-action layout |
 | **S2** | Does numpy FK (rest matrices + pose basis) match Blender's `pose.bones[].matrix` within 0.1 mm? | ADR 0003, Phase 1 | ✅ 0.63 µm max error |
-| **S3** | Can Workbench render headlessly at 512² in ≤ 1 s per frame, on the workstation and on GPU-less CI? | ADR 0007, `blender.yml` gating | ✅ workstation (57 ms/frame); CI: see the `blender.yml` artifact |
+| **S3** | Can Workbench render headlessly at 512² in ≤ 1 s per frame, on the workstation and on GPU-less CI? | ADR 0007, `blender.yml` gating | ✅ workstation 0.057 s/frame; ✅ GPU-less CI 0.417 s/frame |
 | **S4** | Token Factory: base URL, model IDs, `json_schema` support, image input, `usage` fields | ADR 0009, Phase 4 | pending (needs `NEBIUS_API_KEY`) |
 | **S5** | Nebius Serverless Jobs: submit API, artifact exchange, status delivery, image startup latency, pricing | Phase 6 | pending (document only; see infra/nebius/README.md) |
 
@@ -51,7 +51,12 @@ The test covered 60 random poses of a chain with non-zero rolls, under an armatu
 - **Output:** 24 of 24 frames written, 512² JPEG, Workbench.
 - **Timing:** the first frame took 1.02 s (warm-up included); the mean was **0.057 s/frame**.
 
-**CI (ubuntu-latest, no GPU): pending.** `blender.yml` runs the spikes and uploads `var/spikes/*.json` as an artifact. Record that result here once it is in.
+**CI (GitHub ubuntu-latest, no GPU, Mesa llvmpipe): PASS.** Run 37098378678 on 2026-10-03.
+
+- **Output:** 24 of 24 frames written.
+- **Timing:** the first frame took 2.83 s; the mean was **0.417 s/frame**, under the 1.0 s budget.
+- **Phase 2 cost:** at this rate, a 67-frame crop plus 17 context frames per candidate takes about 35 s of CI render time.
+- **S1 and S2 in the same run:** results identical to the workstation (S1 passes only with the pushed-original layout; S2 max error 6.3e-7 m), so both findings reproduce across platforms.
 
 ### S4: Token Factory
 **Result: pending.** Record:

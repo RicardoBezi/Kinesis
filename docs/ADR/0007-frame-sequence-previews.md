@@ -1,6 +1,6 @@
 # ADR 0007: Previews as JPEG frame sequences
 
-**Status:** Accepted, pending spike S3 (headless rendering)
+**Status:** Accepted. Spike S3 passed on 2026-10-03: 0.057 s/frame on the workstation GPU and 0.417 s/frame on GPU-less GitHub CI (llvmpipe)
 
 ## Context
 The reviewer must see Original, A and B in sync, frame by frame.

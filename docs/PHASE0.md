@@ -26,7 +26,7 @@ Phase 0 asked for 15 deliverables. Each one is listed here with where it lives.
 - **The OpenAPI contract round-trips into Kotlin.** Backend-generated sample payloads decode with the generated Kotlin models. Doing this exposed and fixed three schema shapes that would have broken the client.
 - **S1 disproved the first NLA layout before any code depended on it.** It showed that the original must be moved to a bottom NLA strip, not left as the active action. ADR 0004 has been revised.
 - **S2 confirmed numpy FK parity** with Blender to 0.6 µm.
-- **S3 confirmed headless Workbench rendering** at 57 ms/frame on the workstation.
+- **S3 confirmed headless Workbench rendering:** 0.057 s/frame on the workstation and 0.417 s/frame on GPU-less GitHub CI. S1 and S2 reproduce on Linux CI.
 
 ## Open concerns and assumptions (resolve before or during the phase noted)
 
@@ -34,7 +34,7 @@ Phase 0 asked for 15 deliverables. Each one is listed here with where it lives.
 |---|---|---|---|
 | C1 | **Token Factory specifics are unverified:** the base URL, the exact Nemotron 3 Super and Nano Omni ids, `json_schema` support, the image input format and limits, and the `usage` fields. `.env.example` deliberately leaves the model ids blank | Before Phase 4 | Provide `NEBIUS_API_KEY`, run spike S4, and record the results |
 | C2 | **The Serverless Jobs API and its artifact exchange are unverified** (spike S5) | Before Phase 6 | Read the Nebius docs or do a trial run, then answer the questions in `infra/nebius/README.md` |
-| C3 | **S3 on GPU-less CI:** whether Workbench via EGL/llvmpipe is fast and reliable enough to make `blender.yml` a required gate | Phase 1 | Read the `blender.yml` spike artifact |
+| C3 | ~~S3 on GPU-less CI~~ **Resolved:** 0.417 s/frame on ubuntu-latest. Make `blender.yml` a required gate after a week of green nightly runs | Phase 1 | Enable branch protection for `blender` |
 | C4 | **Live add-on workflow:** the MVP works on an uploaded copy and produces an output `.blend`. Importing the chosen Action back into the animator's open session is an add-on feature, and it must use the same pushed-original NLA layout | Phase 5/7 | n/a |
 | C5 | **The productivity claim needs a user protocol** with at least 3 animators, as described in [METRICS §3](METRICS.md#3-workflow-evaluation-protocol-to-be-run-in-phase-7). Until it has been run, only objective slip and collateral numbers can be claimed | Phase 7 | Recruit participants |
 | C6 | **The MVP chain resolver assumes a thigh → shin → foot hierarchy.** Production rigs with IK controls, twist bones or FK/IK switches will hit `UNSUPPORTED_RIG` | Post-MVP | A rig-mapping config is a future milestone |
