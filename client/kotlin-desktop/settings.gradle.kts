@@ -1,7 +1,9 @@
 pluginManagement {
     repositories {
-        gradlePluginPortal()
+        // Central first: the plugin portal only redirects there for these artifacts, and
+        // resolving them through the portal was flaky in CI.
         mavenCentral()
+        gradlePluginPortal()
         google()
     }
 }

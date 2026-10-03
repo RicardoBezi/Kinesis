@@ -105,7 +105,10 @@ def setup_blender(_: list[str]) -> int:
     if not archive.exists():
         url = f"{BLENDER_BASE_URL}/{name}"
         print(f"downloading {url}")
-        urllib.request.urlretrieve(url, archive)  # noqa: S310 - fixed https URL
+        # download.blender.org rejects Python's default User-Agent with HTTP 403.
+        req = urllib.request.Request(url, headers={"User-Agent": "kinesis-setup/1.0"})  # noqa: S310
+        with urllib.request.urlopen(req) as resp, archive.open("wb") as fh:  # noqa: S310
+            shutil.copyfileobj(resp, fh, length=1 << 20)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     if digest != sha256:
         archive.unlink()
