@@ -1,0 +1,31 @@
+{
+  "events": [
+    {
+      "attempt": 1,
+      "candidate_id": null,
+      "data": {},
+      "job_id": "job_01j9zsample",
+      "message": "",
+      "node": "extract_scope",
+      "seq": 1,
+      "ts": "2026-10-03T12:00:00Z",
+      "type": "NODE_STARTED"
+    },
+    {
+      "attempt": null,
+      "candidate_id": null,
+      "data": {
+        "elapsed_ms": 18234,
+        "from": "RUNNING",
+        "to": "AWAITING_DECISION"
+      },
+      "job_id": "job_01j9zsample",
+      "message": "RUNNING -> AWAITING_DECISION",
+      "node": null,
+      "seq": 2,
+      "ts": "2026-10-03T12:00:00Z",
+      "type": "STATUS_CHANGED"
+    }
+  ],
+  "next_seq": 2
+}

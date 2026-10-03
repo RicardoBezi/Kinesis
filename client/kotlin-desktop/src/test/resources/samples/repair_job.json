@@ -1,0 +1,290 @@
+{
+  "candidates": [
+    {
+      "algorithm_version": "foot_contact/1",
+      "artifacts": [
+        {
+          "artifact_id": "art_01j9zframesa",
+          "first_frame": 35,
+          "frame_count": 67,
+          "frame_step": 1,
+          "kind": "PREVIEW_FRAMES",
+          "media_type": "image/jpeg",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "size_bytes": 1234567,
+          "uri": "/v1/artifacts/art_01j9zframesa"
+        }
+      ],
+      "candidate_id": "54d52c6feefe83ef",
+      "error": null,
+      "label": "A",
+      "metrics": {
+        "collateral_max_cm": 0.0,
+        "contact_error_cm": 0.1,
+        "gate_reasons": [],
+        "gated": false,
+        "ik_unreachable_frames": 0,
+        "jerk_rms_ratio": 1.2,
+        "joint_limit_violations": 0,
+        "objective_score": 0.9,
+        "outside_window_max_cm": 0.0,
+        "penetration_max_cm": 0.0,
+        "planted_displacement_cm_after": 0.2,
+        "planted_displacement_cm_before": 10.0,
+        "root_deviation_cm": 0.0,
+        "slip_reduction_pct": 98.00000000000001,
+        "target_deviation_rms_cm": 4.0
+      },
+      "parameters": {
+        "anchor_mode": "ONSET",
+        "blend_frames": 3,
+        "height_clamp": true,
+        "lock_strength": 1.0,
+        "lock_yaw": true,
+        "smoothing_window": 0,
+        "tolerance_cm": 0.2
+      },
+      "status": "SUCCEEDED"
+    },
+    {
+      "algorithm_version": "foot_contact/1",
+      "artifacts": [
+        {
+          "artifact_id": "art_01j9zframesa",
+          "first_frame": 35,
+          "frame_count": 67,
+          "frame_step": 1,
+          "kind": "PREVIEW_FRAMES",
+          "media_type": "image/jpeg",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "size_bytes": 1234567,
+          "uri": "/v1/artifacts/art_01j9zframesa"
+        }
+      ],
+      "candidate_id": "86abfa6ae8dbd946",
+      "error": null,
+      "label": "B",
+      "metrics": {
+        "collateral_max_cm": 0.0,
+        "contact_error_cm": 0.1,
+        "gate_reasons": [],
+        "gated": false,
+        "ik_unreachable_frames": 0,
+        "jerk_rms_ratio": 1.2,
+        "joint_limit_violations": 0,
+        "objective_score": 0.9,
+        "outside_window_max_cm": 0.0,
+        "penetration_max_cm": 0.0,
+        "planted_displacement_cm_after": 1.5,
+        "planted_displacement_cm_before": 10.0,
+        "root_deviation_cm": 0.0,
+        "slip_reduction_pct": 85.0,
+        "target_deviation_rms_cm": 4.0
+      },
+      "parameters": {
+        "anchor_mode": "MEAN",
+        "blend_frames": 8,
+        "height_clamp": true,
+        "lock_strength": 0.85,
+        "lock_yaw": false,
+        "smoothing_window": 5,
+        "tolerance_cm": 1.0
+      },
+      "status": "SUCCEEDED"
+    }
+  ],
+  "created_at": "2026-10-03T12:00:00Z",
+  "decision": {
+    "agreed": true,
+    "candidate_id": "86abfa6ae8dbd946",
+    "choice": "B",
+    "decided_at": "2026-10-03T12:00:00Z",
+    "job_id": "job_01j9zsample",
+    "model_recommended": "B",
+    "note": null,
+    "time_to_decision_s": 41.5
+  },
+  "defect": {
+    "algorithm_version": "foot_contact/1",
+    "detection_config": {
+      "consistency_band_m": 0.01,
+      "floor_percentile": 5.0,
+      "gap_close_frames": 2,
+      "height_threshold_m": 0.025,
+      "min_run_frames": 6,
+      "severity_major_cm": 2.0,
+      "severity_minor_cm": 0.5,
+      "speed_threshold_m_s": 0.6
+    },
+    "intervals": [
+      {
+        "anchor": [
+          0.1,
+          -0.3,
+          0.0
+        ],
+        "contact_consistency": 1.0,
+        "end": 90,
+        "max_frame_slip_cm": 0.35,
+        "mean_slip_velocity_cm_s": 4.7,
+        "path_slip_cm": 10.0,
+        "planted_displacement_cm": 10.0,
+        "start": 40,
+        "velocity_variance": 0.0004
+      }
+    ],
+    "severity": "MAJOR",
+    "summary": "foot.L planted 40-90 but slides 10.0 cm",
+    "worst_interval_index": 0
+  },
+  "error": null,
+  "evaluation": {
+    "evaluator_status": "OK",
+    "objective_ranking": [
+      {
+        "candidate_id": "54d52c6feefe83ef",
+        "gated": false,
+        "label": "A",
+        "score": 0.9
+      },
+      {
+        "candidate_id": "86abfa6ae8dbd946",
+        "gated": false,
+        "label": "B",
+        "score": 0.9
+      }
+    ],
+    "recommendation_reason": "B keeps more of the original weight shift.",
+    "recommended": "B",
+    "scoring_weights": {
+      "contact": 0.1,
+      "deviation": 0.15,
+      "jerk": 0.2,
+      "slip": 0.55
+    },
+    "visual": [
+      {
+        "artifacts_visible": 5,
+        "candidate_id": "86abfa6ae8dbd946",
+        "contact_stability": 4,
+        "instruction_adherence": 4,
+        "latency_ms": 1800,
+        "model_id": "nvidia/nemotron-placeholder",
+        "naturalness": 5,
+        "notes": "Softer release; heel stays down.",
+        "performance_preservation": 5,
+        "usage": {
+          "completion_tokens": 120,
+          "prompt_tokens": 2048
+        }
+      }
+    ]
+  },
+  "idempotency_key": "sample-key-0001",
+  "job_id": "job_01j9zsample",
+  "last_event_seq": 2,
+  "output": null,
+  "plan": {
+    "candidates": {
+      "A": {
+        "anchor_mode": "ONSET",
+        "blend_frames": 3,
+        "height_clamp": true,
+        "lock_strength": 1.0,
+        "lock_yaw": true,
+        "smoothing_window": 0,
+        "tolerance_cm": 0.2
+      },
+      "B": {
+        "anchor_mode": "MEAN",
+        "blend_frames": 8,
+        "height_clamp": true,
+        "lock_strength": 0.85,
+        "lock_yaw": false,
+        "smoothing_window": 5,
+        "tolerance_cm": 1.0
+      }
+    },
+    "contact_target": {
+      "kind": "FLOOR_PLANE",
+      "object_name": null,
+      "plane_normal": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "plane_point": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "context_frames_after": 10,
+    "context_frames_before": 10,
+    "explanation": "Deterministic presets: A locks the foot at touchdown with short blends; B softly pulls the foot toward its mean planted position, preserving more of the original trajectory.",
+    "fallback_reason": "no model provider configured",
+    "frame_end": 90,
+    "frame_start": 45,
+    "model_id": null,
+    "plan_source": "FALLBACK",
+    "preserve_non_target_bones": true,
+    "preserve_root_motion": true,
+    "repair_type": "FOOT_CONTACT",
+    "target_bones": [
+      "foot.L"
+    ]
+  },
+  "plan_mode": "AUTO",
+  "repair_type": "FOOT_CONTACT",
+  "selection": {
+    "armature": "Rig",
+    "contact": {
+      "kind": "FLOOR_PLANE",
+      "object_name": null,
+      "plane_normal": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "plane_point": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "instruction": "keep the heel planted",
+    "scene_id": "scn_01j9zsample",
+    "target_bones": [
+      "foot.L"
+    ],
+    "temporal": {
+      "context_after": 10,
+      "context_before": 10,
+      "frame_end": 90,
+      "frame_start": 45
+    }
+  },
+  "skeletal_scope": {
+    "armature": "Rig",
+    "chain_bones": [
+      "thigh.L",
+      "shin.L",
+      "foot.L",
+      "toe.L"
+    ],
+    "context_bones": [
+      "pelvis",
+      "root"
+    ],
+    "keyable_bones": [
+      "thigh.L",
+      "shin.L",
+      "foot.L"
+    ],
+    "target_bones": [
+      "foot.L"
+    ]
+  },
+  "status": "AWAITING_DECISION",
+  "updated_at": "2026-10-03T12:00:00Z"
+}

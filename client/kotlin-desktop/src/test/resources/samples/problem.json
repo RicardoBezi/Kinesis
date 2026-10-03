@@ -1,0 +1,9 @@
+{
+  "code": "BONE_NOT_FOUND",
+  "detail": "foot.Left is not a bone of armature Rig",
+  "errors": [],
+  "instance": "/v1/jobs",
+  "status": 422,
+  "title": "Bone not found",
+  "type": "about:blank"
+}
