@@ -39,7 +39,7 @@ Phase 0 asked for 15 deliverables. Each one is listed here with where it lives.
 | C5 | **The productivity claim needs a user protocol** with at least 3 animators, as described in [METRICS §3](METRICS.md#3-workflow-evaluation-protocol-to-be-run-in-phase-7). Until it has been run, only objective slip and collateral numbers can be claimed | Phase 7 | Recruit participants |
 | C6 | **The MVP chain resolver assumes a thigh → shin → foot hierarchy.** Production rigs with IK controls, twist bones or FK/IK switches will hit `UNSUPPORTED_RIG` | Post-MVP | A rig-mapping config is a future milestone |
 | C7 | **Scaled armature objects** are not covered by S2 | Phase 1 | Add a scaled case to S2, or reject scaled rigs in `inspect` |
-| C8 | **The repo lives in OneDrive.** `.venv`, `.tools` (Blender, JDK and Gradle are about 1.5 GB) and the build directories churn sync | Now | Move the repo out of OneDrive, or exclude those folders from sync |
+| C8 | ~~The repo lives in OneDrive~~ **Resolved 2026-10-05:** the repo moved to `C:\dev\Kinesis`, outside any synced folder | Done | n/a |
 | C9 | **Price tables for the cost-per-repair metric** must come from current Nebius pricing. Until they do, the estimate is reported as `null` | Phase 4/6 | n/a |
 | C10 | **Generator quirk:** openapi-generator 7.14 emits BigDecimal-style defaults, which are patched in `build.gradle.kts`. Re-check this when bumping the generator | On upgrade | n/a |
 
