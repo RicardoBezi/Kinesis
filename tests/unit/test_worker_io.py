@@ -9,11 +9,16 @@ import numpy as np
 import pytest
 
 from kinesis.analysis.extraction import detect_from_extract, motion_from_extract
-from kinesis.errors import WorkerOutputInvalid, WorkerReportedFailure, is_retryable
+from kinesis.errors import (
+    SelectionInvalid,
+    WorkerOutputInvalid,
+    WorkerReportedFailure,
+    is_retryable,
+)
 from kinesis.jobs.local import LocalJobRunner
 from kinesis.jobs.runner import JobRunner, WorkerInvocation
 from kinesis.jobs.worker_io import read_result, spec_paths, write_spec
-from kinesis.schemas import AnimationSelection, Severity, SkeletalScope
+from kinesis.schemas import AnimationSelection, ErrorCode, Severity, SkeletalScope
 from kinesis.schemas.worker import ExtractResult, ExtractSpec, InspectResult, WorkerCommand
 from kinesis.testing.fake_worker import extract_result
 from kinesis.testing.synthetic import foot_slide_v1
@@ -73,6 +78,21 @@ def test_read_result_reported_failure(tmp_path: Path) -> None:
         read_result(path, InspectResult)
     assert err.value.error_type == "LookupError"
     assert not is_retryable(err.value)
+
+
+def test_read_result_maps_unsupported_rig(tmp_path: Path) -> None:
+    path = tmp_path / "r.json"
+    failure = {
+        "protocol": 1,
+        "ok": False,
+        "error_type": "UnsupportedRig",
+        "message": "armature 'Rig' has world scale (2.0, 2.0, 2.0)\nTraceback ...",
+    }
+    path.write_text(json.dumps(failure), encoding="utf-8")
+    with pytest.raises(SelectionInvalid) as err:
+        read_result(path, InspectResult)
+    assert err.value.code is ErrorCode.UNSUPPORTED_RIG
+    assert "Traceback" not in err.value.message
 
 
 def test_local_runner_argv_is_fixed(tmp_path: Path) -> None:

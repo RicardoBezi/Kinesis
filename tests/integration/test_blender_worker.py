@@ -18,10 +18,10 @@ import numpy as np
 import pytest
 
 from kinesis.analysis.extraction import detect_from_extract, motion_from_extract
-from kinesis.errors import WorkerReportedFailure
+from kinesis.errors import SelectionInvalid, WorkerReportedFailure
 from kinesis.jobs.local import LocalJobRunner
 from kinesis.jobs.worker_io import run_worker, spec_paths
-from kinesis.schemas import AnimationSelection, Severity, SkeletalScope
+from kinesis.schemas import AnimationSelection, ErrorCode, Severity, SkeletalScope
 from kinesis.schemas.worker import (
     ExtractResult,
     ExtractSpec,
@@ -158,6 +158,29 @@ def test_extract_reports_unknown_armature(tmp_path: Path, module_scope: Skeletal
     job_dir = _job_dir(tmp_path)
     with pytest.raises(WorkerReportedFailure, match="armature 'Nope' not found"):
         _extract(job_dir, module_scope.model_copy(update={"armature": "Nope"}), (35, 100))
+
+
+def test_scaled_armature_is_unsupported(tmp_path: Path, module_scope: SkeletalScope) -> None:
+    """Concern C7: rest lengths are in armature units, so scaled rigs are rejected up front."""
+    scaled = tmp_path / "scaled.blend"
+    expr = (
+        "import bpy; bpy.data.objects['Rig'].scale = (2, 2, 2); "
+        f"bpy.ops.wm.save_as_mainfile(filepath={str(scaled)!r})"
+    )
+    proc = subprocess.run(  # noqa: S603 - fixed argv, test-only
+        [
+            str(_blender()),
+            *("--background", "--factory-startup", "-noaudio", str(FIXTURE_BLEND)),
+            *("--python-exit-code", "3", "--python-expr", expr),
+        ],
+        capture_output=True,
+        timeout=TIMEOUT_S,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout.decode(errors="replace")[-2000:]
+    with pytest.raises(SelectionInvalid, match="world scale") as err:
+        _extract(_job_dir(tmp_path / "job", scaled), module_scope, (35, 100))
+    assert err.value.code is ErrorCode.UNSUPPORTED_RIG
 
 
 def test_committed_fixture_matches_builder(

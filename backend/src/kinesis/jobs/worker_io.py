@@ -10,12 +10,15 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from kinesis.errors import WorkerOutputInvalid, WorkerReportedFailure
+from kinesis.errors import SelectionInvalid, WorkerOutputInvalid, WorkerReportedFailure
 from kinesis.jobs.runner import JobRunner, WorkerInvocation, assert_inside
-from kinesis.schemas.common import KinesisModel
+from kinesis.schemas.common import ErrorCode, KinesisModel
 from kinesis.schemas.worker import WorkerCommand, WorkerFailure
 
 MAX_RESULT_BYTES = 256 * 1024 * 1024
+
+# Worker error types that describe the user's scene, not a pipeline fault.
+SELECTION_ERRORS = {"UnsupportedRig": ErrorCode.UNSUPPORTED_RIG}
 
 
 def spec_paths(node: str) -> tuple[str, str]:
@@ -35,7 +38,8 @@ def write_spec(job_dir: Path, spec_relpath: str, spec: KinesisModel) -> Path:
 def read_result[M: KinesisModel](path: Path, model: type[M]) -> M:
     """Parse ``result.json`` as ``model``.
 
-    Raises ``WorkerReportedFailure`` when the worker wrote a ``WorkerFailure`` and
+    Raises ``SelectionInvalid`` when the worker rejected the scene (for example a scaled
+    rig), ``WorkerReportedFailure`` for any other ``WorkerFailure``, and
     ``WorkerOutputInvalid`` when the file is missing, oversized or does not validate.
     """
     try:
@@ -53,6 +57,9 @@ def read_result[M: KinesisModel](path: Path, model: type[M]) -> M:
             failure = WorkerFailure.model_validate(data)
         except ValidationError as exc:
             raise WorkerOutputInvalid(f"malformed WorkerFailure: {exc}") from None
+        if failure.error_type in SELECTION_ERRORS:
+            message = failure.message.split("\n", 1)[0]  # drop the worker traceback
+            raise SelectionInvalid(SELECTION_ERRORS[failure.error_type], message)
         raise WorkerReportedFailure(failure.error_type, failure.message)
     try:
         return model.model_validate(data)

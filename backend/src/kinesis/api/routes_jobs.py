@@ -79,7 +79,7 @@ async def list_events(
     summary="Deterministic defect report (409 NOT_READY until analysis completes)",
 )
 async def get_defect(job_id: JobIdPath) -> DefectReport:
-    raise not_implemented("Phase 1")
+    raise not_implemented("Phase 3")
 
 
 @router.get(

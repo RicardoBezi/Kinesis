@@ -59,11 +59,29 @@ def _vec(v: Any) -> list[float]:
     return [float(v[0]), float(v[1]), float(v[2])]
 
 
+class UnsupportedRig(Exception):
+    """Reported to the backend as error_type ``UnsupportedRig`` (HTTP 422 UNSUPPORTED_RIG)."""
+
+
+SCALE_TOLERANCE = 1e-4
+
+
 def _armature(name: str) -> Any:
     obj = _bpy().data.objects.get(name)
     if obj is None or obj.type != "ARMATURE":
         raise LookupError(f"armature {name!r} not found")
     return obj
+
+
+def _require_unit_scale(obj: Any) -> None:
+    """IK and the metrics use rest-pose bone lengths in world meters, so the armature object
+    (including its parents) must not be scaled. Concern C7 in docs/PHASE0.md."""
+    scale = obj.matrix_world.to_scale()
+    if any(abs(float(s) - 1.0) > SCALE_TOLERANCE for s in scale):
+        raise UnsupportedRig(
+            f"armature {obj.name!r} has world scale {tuple(round(float(s), 4) for s in scale)}; "
+            "apply the object scale (Ctrl+A > Scale) and upload again"
+        )
 
 
 def action_fcurves(action: Any) -> list[Any]:
@@ -136,6 +154,7 @@ def extract(spec: dict[str, Any], job_dir: Path) -> dict[str, Any]:
     bpy = _bpy()
     scene = bpy.context.scene
     obj = _armature(spec["armature"])
+    _require_unit_scale(obj)
     bones = obj.data.bones
     chain = list(spec["chain_bones"])
     missing = [b for b in chain if b not in bones]

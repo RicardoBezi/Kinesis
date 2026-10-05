@@ -28,7 +28,7 @@ SceneIdPath = Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9_-]{5,63}$")]
     ),
 )
 async def upload_scene(file: Annotated[UploadFile, File()]) -> SceneRef:
-    raise not_implemented("Phase 1")
+    raise not_implemented("Phase 3")
 
 
 @router.get(
@@ -38,4 +38,4 @@ async def upload_scene(file: Annotated[UploadFile, File()]) -> SceneRef:
     summary="Get an uploaded scene's inventory",
 )
 async def get_scene(scene_id: SceneIdPath) -> SceneRef:
-    raise not_implemented("Phase 1")
+    raise not_implemented("Phase 3")
