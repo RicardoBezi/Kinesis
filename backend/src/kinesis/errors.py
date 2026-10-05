@@ -90,6 +90,20 @@ class RenderFailed(KinesisError):
     code = ErrorCode.RENDER_FAILED
 
 
+# ---------------------------------------------------------------- selection
+
+
+class SelectionInvalid(KinesisError):
+    """The selection does not fit the scene: unknown bone, bad frame range, unsupported rig.
+
+    Deterministic, so never retried. The API renders it as a 4xx Problem with ``code``.
+    """
+
+    def __init__(self, code: ErrorCode, message: str, *, node: str | None = None) -> None:
+        super().__init__(message, node=node)
+        self.code = code
+
+
 # ---------------------------------------------------------------- pipeline
 
 
