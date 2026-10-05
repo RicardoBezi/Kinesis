@@ -103,5 +103,5 @@ def test_no_unsafe_deserialization_anywhere() -> None:
         assert not (_imported_roots(f) & banned), f
         src = f.read_text(encoding="utf-8")
         assert "eval(" not in src.replace("_eval(", ""), f
-        assert "exec(" not in src, f
+        assert "exec(" not in src.replace("create_subprocess_exec(", ""), f
         assert "shell=True" not in src, f

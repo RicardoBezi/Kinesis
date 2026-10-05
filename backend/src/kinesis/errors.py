@@ -86,6 +86,17 @@ class WorkerOutputInvalid(KinesisError):
     code = ErrorCode.WORKER_OUTPUT_INVALID
 
 
+class WorkerReportedFailure(KinesisError):
+    """The worker ran, caught an error (for example a missing armature) and wrote a
+    ``WorkerFailure``. The same input fails the same way, so it is not retried."""
+
+    code = ErrorCode.WORKER_CRASHED
+
+    def __init__(self, error_type: str, message: str, *, node: str | None = None) -> None:
+        super().__init__(f"{error_type}: {message}", node=node)
+        self.error_type = error_type
+
+
 class RenderFailed(KinesisError):
     code = ErrorCode.RENDER_FAILED
 
