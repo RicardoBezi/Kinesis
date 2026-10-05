@@ -30,7 +30,7 @@ from typing import Any
 
 import httpx
 
-DEFAULT_BASE_URL = "https://api.tokenfactory.nebius.com/v1"  # UNVERIFIED: confirm in S4
+DEFAULT_BASE_URL = "https://api.tokenfactory.nebius.com/v1"  # verified in S4 on 2026-10-05
 
 
 def client() -> httpx.Client:

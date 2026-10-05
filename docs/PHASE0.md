@@ -32,7 +32,7 @@ Phase 0 asked for 15 deliverables. Each one is listed here with where it lives.
 
 | # | Concern | Resolve by | Owner action |
 |---|---|---|---|
-| C1 | **Token Factory specifics are unverified:** the base URL, the exact Nemotron 3 Super and Nano Omni ids, `json_schema` support, the image input format and limits, and the `usage` fields. `.env.example` deliberately leaves the model ids blank | Before Phase 4 | Provide `NEBIUS_API_KEY`, run spike S4, and record the results |
+| C1 | ~~Token Factory specifics~~ **Resolved by S4:** all confirmed, except that **no multimodal Nemotron exists**. Vision evaluation uses MiniCPM-V-4.5 (≤ 10 images per request) | Done | Decide whether a non-NVIDIA vision model is acceptable for the portfolio narrative |
 | C2 | **The Serverless Jobs API and its artifact exchange are unverified** (spike S5) | Before Phase 6 | Read the Nebius docs or do a trial run, then answer the questions in `infra/nebius/README.md` |
 | C3 | ~~S3 on GPU-less CI~~ **Resolved:** 0.417 s/frame on ubuntu-latest. Make `blender.yml` a required gate after a week of green nightly runs | Phase 1 | Enable branch protection for `blender` |
 | C4 | **Live add-on workflow:** the MVP works on an uploaded copy and produces an output `.blend`. Importing the chosen Action back into the animator's open session is an add-on feature, and it must use the same pushed-original NLA layout | Phase 5/7 | n/a |

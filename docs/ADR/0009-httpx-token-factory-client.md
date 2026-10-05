@@ -1,6 +1,6 @@
 # ADR 0009: httpx client for Nebius Token Factory
 
-**Status:** Accepted, pending spike S4
+**Status:** Accepted. Spike S4 passed on 2026-10-05, with one deviation (see below)
 
 ## Context
 Token Factory exposes an OpenAI-compatible API. Kinesis needs three calls from it:
@@ -27,3 +27,8 @@ Build `TokenFactoryClient` on `httpx.AsyncClient`:
 ## Consequences
 - **No vendor SDK dependency.** Kinesis does not depend on the release schedule of a vendor SDK.
 - **Slightly more code to maintain.** That is acceptable for three endpoints.
+
+## S4 result and deviation (2026-10-05)
+- **Confirmed:** the base URL `https://api.tokenfactory.nebius.com/v1/` with Bearer auth; `json_schema` structured output on Nemotron Super, Nemotron Nano and MiniCPM-V; data-URL image input; `usage` including reasoning tokens.
+- **Deviation:** Token Factory has **no image-capable Nemotron**, so the "Nemotron 3 Nano Omni" in the spec is unavailable. Visual evaluation uses `openbmb/MiniCPM-V-4_5` behind the same `ModelProvider` interface, with at most 10 images per request. Planning and classification stay on Nemotron (Super and Nano). If NVIDIA releases a multimodal Nemotron on Token Factory, switching to it is a one-line change to `KINESIS_VISION_MODEL` plus a contract re-check.
+- **Startup check:** `GET /models?verbose=true` exposes modality and features. At startup the provider will verify that the configured vision model is `text+image->text` and that the planner supports structured outputs, and fail fast if not.
