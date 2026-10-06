@@ -1,7 +1,7 @@
 {
   "fixture": "foot_slide_v1",
   "algorithm_version": "foot_contact/1",
-  "status": "initial: recalibrate in Phase 2 and record measured values in foot_slide_v1.json",
+  "status": "calibrated in Phase 2 (2026-10-06); measured values in foot_slide_v1.json; every change is explained in docs/TESTING.md#golden-thresholds",
   "detection": {
     "planted_displacement_cm": {"min": 9.5, "max": 10.5},
     "interval_tolerance_frames": 2,
@@ -17,7 +17,7 @@
     "outside_window_max_cm_max": 0.001,
     "joint_limit_violations_max": 0,
     "penetration_max_cm_max": 0.5,
-    "jerk_rms_ratio_max": 1.5,
+    "jerk_rms_ratio_max": 2.0,
     "ik_unreachable_frames_max": 0
   },
   "blender_vs_numpy_mirror_max_mm": 0.1

@@ -51,10 +51,10 @@ The pytest config sets `filterwarnings = error`, so new deprecations fail the bu
 | Trajectory extraction | blender | extract output validates and matches the mirror || **1 ✅** |
 | Planted-contact detection | unit + golden | the fixture interval is [40, 90] ± 2 and displacement is 9.5–10.5 cm; edge cases (all planted, never planted, gaps, short runs) || **1 ✅** |
 | Slip metrics | unit | hand-computed micro-trajectories || **1 ✅** |
-| Two-bone IK | unit (hypothesis) | reaches reachable targets within 1e-6 m, preserves the knee plane relative to the pole, clamps unreachable targets and counts them | 2 |
-| Candidate generation | unit + golden | presets are reproducible; A and B meet their thresholds | 2 |
-| Preservation invariants | golden (hypothesis) | a left-foot repair leaves RIGHT_HAND unchanged (≤ 1e-6 m); inputs are not mutated; no keys outside `[a−k, b+k]`; idempotent | 2 |
-| Objective metrics and ranking | unit | each formula from ALGORITHMS §4; gating | 2 |
+| Two-bone IK | unit (hypothesis) | reaches reachable targets within 1e-6 m, preserves the knee plane relative to the pole, clamps unreachable targets and counts them || **2 ✅** |
+| Candidate generation | unit + golden | presets are reproducible; A and B meet their thresholds || **2 ✅** |
+| Preservation invariants | golden (hypothesis) | a left-foot repair leaves RIGHT_HAND unchanged (≤ 1e-6 m); inputs are not mutated; no keys outside `[a−k, b+k]`; idempotent || **2 ✅** |
+| Objective metrics and ranking | unit | each formula from ALGORITHMS §4; gating || **2 ✅** |
 | Non-destructive apply | blender | the original Action hash is unchanged; the NLA track exists; muting it restores the original exactly | 2 |
 | Render | blender | the expected frame count and resolution | 2 |
 | Orchestration | unit + fault | concurrency (A and B overlap in time), retries, breaker, cancellation, partial failure | 3 |
@@ -79,9 +79,9 @@ The canonical fixture is `foot_slide_v1`, with 10 cm injected over frames 50–8
 | `outside_window_max_cm` | ≤ 0.001 | No keys outside the window |
 | `joint_limit_violations` | 0 | |
 | `penetration_max_cm` | ≤ 0.5 | Height clamp |
-| `jerk_rms_ratio` | ≤ 1.5 | A short blend (A, k=3) increases jerk; this bounds how much |
+| `jerk_rms_ratio` | ≤ 2.0 | **Recalibrated in Phase 2 (was 1.5).** Measured: A 1.79, B 1.37. On the fixture, A's 3-frame blend has to return the ankle from the locked anchor to an original foot that is still offset 8.7 cm and already swinging, so a short, sharp correction is inherent to a strong lock. 2.0 still catches a blend that doubles the jerk |
 
-**Calibration rule.** Phase 2 measures the real values and writes `tests/golden/foot_slide_v1.json`. A threshold may change only in a commit that updates this table with a reason, and it must never be loosened below the spec's 80% target.
+**Calibration rule.** Phase 2 measured the real values and wrote `tests/golden/foot_slide_v1.json` (A: 100% slip reduction; B: 88.2%; zero collateral, outside-window and root deviation for both). Regenerate it with `KINESIS_UPDATE_GOLDEN=1 uv run task test-golden`. A threshold may change only in a commit that updates this table with a reason, and it must never be loosened below the spec's 80% target.
 
 ## Fault-injection matrix
 

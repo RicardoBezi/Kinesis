@@ -87,6 +87,15 @@ def canonical_json(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
+def compute_input_hash(scope: object, features_bytes: bytes) -> str:
+    """``sha256(canonical_json(scope) || sha256(features_artifact_bytes))`` (ALGORITHMS §3.4).
+
+    ``scope`` is the JSON-compatible resolved scope (selection, skeletal scope, interval).
+    """
+    inner = hashlib.sha256(features_bytes).hexdigest()
+    return hashlib.sha256((canonical_json(scope) + inner).encode("utf-8")).hexdigest()
+
+
 def compute_candidate_id(
     input_hash: str,
     parameters: CandidateParameters,

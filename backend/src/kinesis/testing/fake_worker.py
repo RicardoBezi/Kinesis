@@ -9,8 +9,21 @@ import hashlib
 
 import numpy as np
 
-from kinesis.analysis.kinematics import Array, mat3_to_quat
-from kinesis.schemas.worker import BoneRest, BoneSamples, ChainFrames, ExtractResult, Mat4
+from kinesis.analysis.kinematics import (
+    Array,
+    compose,
+    forward_kinematics,
+    mat3_to_quat,
+    quat_to_mat3,
+)
+from kinesis.schemas.worker import (
+    BoneKeys,
+    BoneRest,
+    BoneSamples,
+    ChainFrames,
+    ExtractResult,
+    Mat4,
+)
 from kinesis.testing.synthetic import SyntheticScene
 
 
@@ -65,12 +78,41 @@ def extract_result(
             )
             for n in chain_bones
         ),
-        all_bones=tuple(
-            BoneSamples(name=n, head=_vecs(scene.head(n)), tail=_vecs(scene.tail(n)))
-            for n in skel.names
-        ),
+        all_bones=all_bone_samples(scene),
         original_action_hash=scene_action_hash(scene),
     )
 
 
-__all__ = ["extract_result", "scene_action_hash"]
+def apply_keys(scene: SyntheticScene, keys: tuple[BoneKeys, ...]) -> SyntheticScene:
+    """What Blender evaluates with a candidate Replace strip above the original.
+
+    Only the keyed quaternion channels change, and only on keyed frames; every other channel
+    (including the pelvis location) falls through from the original, as spike S1 showed.
+    """
+    basis = {name: m.copy() for name, m in scene.basis.items()}
+    for bk in keys:
+        for frame, q in zip(bk.frames, bk.rotation_quaternion, strict=True):
+            t = frame - scene.frame_start
+            basis[bk.bone][t] = compose(quat_to_mat3(q), basis[bk.bone][t][:3, 3])
+    world = forward_kinematics(scene.skeleton, basis)
+    local = {name: np.array([mat3_to_quat(b[:3, :3]) for b in basis[name]]) for name in basis}
+    return SyntheticScene(
+        skeleton=scene.skeleton,
+        frame_start=scene.frame_start,
+        fps=scene.fps,
+        basis=basis,
+        local_quat=local,
+        pelvis_location=scene.pelvis_location,
+        world=world,
+        armature=scene.armature,
+    )
+
+
+def all_bone_samples(scene: SyntheticScene) -> tuple[BoneSamples, ...]:
+    return tuple(
+        BoneSamples(name=n, head=_vecs(scene.head(n)), tail=_vecs(scene.tail(n)))
+        for n in scene.skeleton.names
+    )
+
+
+__all__ = ["all_bone_samples", "apply_keys", "extract_result", "scene_action_hash"]

@@ -1,0 +1,45 @@
+{
+  "fixture": "foot_slide_v1",
+  "algorithm_version": "foot_contact/1",
+  "detected_interval": [
+    39,
+    91
+  ],
+  "planted_displacement_cm": 10.001952,
+  "candidates": {
+    "A": {
+      "planted_displacement_cm_before": 10.001952,
+      "planted_displacement_cm_after": 0.0,
+      "slip_reduction_pct": 100.0,
+      "contact_error_cm": 0.0,
+      "penetration_max_cm": 0.0,
+      "jerk_rms_ratio": 1.789375,
+      "joint_limit_violations": 0,
+      "target_deviation_rms_cm": 5.039247,
+      "collateral_max_cm": 0.0,
+      "outside_window_max_cm": 0.0,
+      "root_deviation_cm": 0.0,
+      "ik_unreachable_frames": 0,
+      "gated": false,
+      "gate_reasons": [],
+      "objective_score": 0.692125
+    },
+    "B": {
+      "planted_displacement_cm_before": 10.001952,
+      "planted_displacement_cm_after": 1.183737,
+      "slip_reduction_pct": 88.164938,
+      "contact_error_cm": 0.210264,
+      "penetration_max_cm": 0.0,
+      "jerk_rms_ratio": 1.365264,
+      "joint_limit_violations": 0,
+      "target_deviation_rms_cm": 2.994628,
+      "collateral_max_cm": 0.0,
+      "outside_window_max_cm": 0.0,
+      "root_deviation_cm": 0.0,
+      "ik_unreachable_frames": 0,
+      "gated": false,
+      "gate_reasons": [],
+      "objective_score": 0.761502
+    }
+  }
+}

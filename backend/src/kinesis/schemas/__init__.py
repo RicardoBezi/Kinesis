@@ -29,6 +29,7 @@ from kinesis.schemas.candidate import (
     CandidateMetrics,
     RepairCandidate,
     compute_candidate_id,
+    compute_input_hash,
 )
 from kinesis.schemas.common import (
     ALGORITHM_VERSION,
@@ -122,4 +123,5 @@ __all__ = [
     "TokenUsage",
     "VisualEvaluation",
     "compute_candidate_id",
+    "compute_input_hash",
 ]
