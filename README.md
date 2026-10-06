@@ -18,7 +18,9 @@ The MVP handles one repair class: **foot-contact / foot-sliding repair in Blende
 
 ## Status
 
-**Phase 0: design freeze (complete).** The architecture, data contracts, API contracts, test strategy, CI and spikes are defined. [docs/PHASE0.md](docs/PHASE0.md) indexes every deliverable and lists the open concerns. Feature implementation starts in Phase 1; see [docs/PRODUCT.md](docs/PRODUCT.md#implementation-phases).
+- **Phase 0: design freeze (complete).** Architecture, contracts, test strategy, CI and spikes. See [docs/PHASE0.md](docs/PHASE0.md).
+- **Phase 1: fixture and analysis (complete).** The canonical fixture is built in Blender 4.5, extracted headlessly, and its injected slide is measured at 10.0 cm, both in CI and on the real `.blend`. See [docs/PHASE1.md](docs/PHASE1.md).
+- **Next: Phase 2, deterministic repair** (candidates A/B, NLA layering, previews). See [docs/PRODUCT.md](docs/PRODUCT.md#implementation-phases).
 
 ## Repository map
 

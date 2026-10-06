@@ -38,12 +38,12 @@ Phase 0 asked for 15 deliverables. Each one is listed here with where it lives.
 | C4 | **Live add-on workflow:** the MVP works on an uploaded copy and produces an output `.blend`. Importing the chosen Action back into the animator's open session is an add-on feature, and it must use the same pushed-original NLA layout | Phase 5/7 | n/a |
 | C5 | **The productivity claim needs a user protocol** with at least 3 animators, as described in [METRICS §3](METRICS.md#3-workflow-evaluation-protocol-to-be-run-in-phase-7). Until it has been run, only objective slip and collateral numbers can be claimed | Phase 7 | Recruit participants |
 | C6 | **The MVP chain resolver assumes a thigh → shin → foot hierarchy.** Production rigs with IK controls, twist bones or FK/IK switches will hit `UNSUPPORTED_RIG` | Post-MVP | A rig-mapping config is a future milestone |
-| C7 | **Scaled armature objects** are not covered by S2 | Phase 1 | Add a scaled case to S2, or reject scaled rigs in `inspect` |
+| C7 | ~~Scaled armature objects~~ **Resolved in Phase 1:** `extract` rejects armatures with world scale ≠ 1 as `UNSUPPORTED_RIG` | Done | n/a |
 | C8 | ~~The repo lives in OneDrive~~ **Resolved 2026-10-05:** the repo moved to `C:\dev\Kinesis`, outside any synced folder | Done | n/a |
 | C9 | **Price tables for the cost-per-repair metric** must come from current Nebius pricing. Until they do, the estimate is reported as `null` | Phase 4/6 | n/a |
 | C10 | **Generator quirk:** openapi-generator 7.14 emits BigDecimal-style defaults, which are patched in `build.gradle.kts`. Re-check this when bumping the generator | On upgrade | n/a |
 
-## Next: Phase 1 (fixture and analysis)
+## Phase 1 plan (fixture and analysis): done, see [PHASE1.md](PHASE1.md)
 
 1. Implement `kinesis.testing.synthetic.foot_slide_v1()`, the numpy mirror, using the formulas in FIXTURE.md.
 2. Implement `blender/fixtures/build_fixture.py` from the same formulas, and commit `foot_slide_v1.blend`.

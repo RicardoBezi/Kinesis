@@ -20,7 +20,7 @@ uv run task fmt              # auto-format and auto-fix
 uv run task run              # API with reload at http://127.0.0.1:8000/docs
 uv run task openapi          # regenerate docs/api/openapi.json (CI checks drift)
 uv run task setup-blender    # portable Blender 4.5.14 into .tools/
-uv run task fixture          # (Phase 1) build blender/fixtures/foot_slide_v1.blend
+uv run task fixture          # rebuild blender/fixtures/foot_slide_v1.blend
 uv run task test-blender     # Blender integration + golden tests
 uv run task models           # (spike S4) list Token Factory models for your key
 uv run task live-nebius-test # live Token Factory tests; needs NEBIUS_API_KEY

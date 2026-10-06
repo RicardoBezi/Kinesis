@@ -46,11 +46,11 @@ The pytest config sets `filterwarnings = error`, so new deprecations fail the bu
 | Job-dir confinement | unit | `..`, absolute and UNC paths are rejected | **0 ✅** |
 | Import purity | unit | the numpy core imports no fastapi, redis, httpx or bpy; no pickle, eval, exec or `shell=True` anywhere | **0 ✅** |
 | API contract | unit | every route exists; errors are `application/problem+json`; 422 problems on bad input; the OpenAPI file is current; the required schemas are present | **0 ✅** |
-| Temporal / skeletal cropping | unit | context clipping, chain resolution on the fixture rig, `UNSUPPORTED_RIG` | 1 |
-| Coordinate transforms / FK | unit + blender | numpy FK equals Blender `pose.bones[].matrix` within 0.1 mm (spike S2) | 1 |
-| Trajectory extraction | blender | extract output validates and matches the mirror | 1 |
-| Planted-contact detection | unit + golden | the fixture interval is [40, 90] ± 2 and displacement is 9.5–10.5 cm; edge cases (all planted, never planted, gaps, short runs) | 1 |
-| Slip metrics | unit | hand-computed micro-trajectories | 1 |
+| Temporal / skeletal cropping | unit | context clipping, chain resolution on the fixture rig, `UNSUPPORTED_RIG` || **1 ✅** |
+| Coordinate transforms / FK | unit + blender | numpy FK equals Blender `pose.bones[].matrix` within 0.1 mm (spike S2) || **1 ✅** |
+| Trajectory extraction | blender | extract output validates and matches the mirror || **1 ✅** |
+| Planted-contact detection | unit + golden | the fixture interval is [40, 90] ± 2 and displacement is 9.5–10.5 cm; edge cases (all planted, never planted, gaps, short runs) || **1 ✅** |
+| Slip metrics | unit | hand-computed micro-trajectories || **1 ✅** |
 | Two-bone IK | unit (hypothesis) | reaches reachable targets within 1e-6 m, preserves the knee plane relative to the pole, clamps unreachable targets and counts them | 2 |
 | Candidate generation | unit + golden | presets are reproducible; A and B meet their thresholds | 2 |
 | Preservation invariants | golden (hypothesis) | a left-foot repair leaves RIGHT_HAND unchanged (≤ 1e-6 m); inputs are not mutated; no keys outside `[a−k, b+k]`; idempotent | 2 |
