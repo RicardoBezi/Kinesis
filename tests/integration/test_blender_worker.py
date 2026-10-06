@@ -186,7 +186,12 @@ def test_scaled_armature_is_unsupported(tmp_path: Path, module_scope: SkeletalSc
 def test_committed_fixture_matches_builder(
     tmp_path: Path, extracted: ExtractResult, module_scope: SkeletalScope
 ) -> None:
-    """Rebuilding the fixture yields the same keys: the .blend has not drifted from the mirror."""
+    """Rebuilding the fixture yields the same motion: the .blend has not drifted from the mirror.
+
+    The comparison is numeric, not by action hash: keys are float32, and libm differences
+    between platforms can move a key by one ulp, so a .blend rebuilt on Linux CI is not
+    bit-identical to the committed one built on Windows.
+    """
     rebuilt = tmp_path / "rebuilt.blend"
     proc = subprocess.run(  # noqa: S603 - fixed argv, test-only
         [
@@ -199,8 +204,13 @@ def test_committed_fixture_matches_builder(
         check=False,
     )
     assert proc.returncode == 0, proc.stdout.decode(errors="replace")[-2000:]
-    again = _extract(_job_dir(tmp_path / "job", rebuilt), module_scope, (35, 100))
-    assert again.original_action_hash == extracted.original_action_hash
+    again = motion_from_extract(
+        _extract(_job_dir(tmp_path / "job", rebuilt), module_scope, (35, 100))
+    )
+    committed = motion_from_extract(extracted)
+    for name, heads in committed.heads.items():
+        assert np.abs(again.heads[name] - heads).max() < 1e-6, name
+        assert np.abs(again.tails[name] - committed.tails[name]).max() < 1e-6, name
 
 
 # ------------------------------------------------------------------ Phase 2 placeholders
