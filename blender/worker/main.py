@@ -3,8 +3,8 @@
 It runs inside Blender with ``--python blender/worker/main.py -- --command <c> --spec <path>``.
 It uses only bpy, mathutils and Blender's bundled numpy, and never pip-installed packages.
 
-``inspect`` and ``extract`` are implemented (Phase 1). ``apply_render`` and ``export`` follow in
-Phase 2. Every handler returns a plain dict that the backend validates against
+Commands: ``inspect`` and ``extract`` (Phase 1), ``apply_render`` and ``export`` (Phase 2,
+non-destructive NLA layering per ADR 0004). Every handler returns a plain dict that the backend validates against
 ``kinesis.schemas.worker``.
 """
 
@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import time
 import traceback
 from collections.abc import Callable
 from pathlib import Path
@@ -214,18 +215,270 @@ def extract(spec: dict[str, Any], job_dir: Path) -> dict[str, Any]:
     }
 
 
-def _not_implemented(phase: str) -> Callable[[dict[str, Any], Path], dict[str, Any]]:
-    def handler(spec: dict[str, Any], job_dir: Path) -> dict[str, Any]:
-        raise NotImplementedError(f"worker command planned for {phase}")
+# --------------------------------------------------------------------------- NLA layering
 
-    return handler
+ORIGINAL_TRACK = "Kinesis:Original"
+TRACK_PREFIX = "Kinesis:"
+
+
+def _original_action(obj: Any) -> Any:
+    """The animator's action: the active one, or the one already pushed to Kinesis/Original."""
+    ad = obj.animation_data
+    if ad is None:
+        raise UnsupportedRig(f"armature {obj.name!r} has no animation")
+    if ad.action is not None:
+        return ad.action
+    track = ad.nla_tracks.get(ORIGINAL_TRACK)
+    if track is not None and len(track.strips):
+        return track.strips[0].action
+    raise UnsupportedRig(f"armature {obj.name!r} has no active action")
+
+
+def push_original_down(obj: Any) -> Any:
+    """ADR 0004: reference the original from a bottom Replace/HOLD strip, clear the active
+    action. Only AnimData references change; the Action datablock is never edited."""
+    ad = obj.animation_data
+    original = _original_action(obj)
+    if ad.nla_tracks.get(ORIGINAL_TRACK) is None:
+        slot = getattr(ad, "action_slot", None)
+        track = ad.nla_tracks.new()
+        track.name = ORIGINAL_TRACK
+        strip = track.strips.new("ORIGINAL", int(original.frame_range[0]), original)
+        strip.blend_type = "REPLACE"
+        strip.extrapolation = "HOLD"
+        if slot is not None and hasattr(strip, "action_slot"):
+            strip.action_slot = slot
+        ad.action = None
+    return original
+
+
+def _new_candidate_action(obj: Any, name: str, keys: list[dict[str, Any]]) -> Any:
+    """A slotted Action with rotation_quaternion keys only, LINEAR between keyed frames."""
+    bpy = _bpy()
+    if name in bpy.data.actions:
+        raise ValueError(f"action {name!r} already exists")
+    action = bpy.data.actions.new(name)
+    slot = action.slots.new(id_type="OBJECT", name=obj.name)
+    bag = action.layers.new("Layer").strips.new(type="KEYFRAME").channelbag(slot, ensure=True)
+    for bone_keys in keys:
+        bone = bone_keys["bone"]
+        pb = obj.pose.bones.get(bone)
+        if pb is None:
+            raise LookupError(f"bone {bone!r} not found")
+        if pb.rotation_mode != "QUATERNION":
+            raise UnsupportedRig(
+                f"bone {bone!r} uses {pb.rotation_mode} rotation; quaternion rotation is required"
+            )
+        frames = [float(f) for f in bone_keys["frames"]]
+        group = bag.groups.get(bone) or bag.groups.new(bone)
+        for i in range(4):
+            fc = bag.fcurves.new(f'pose.bones["{bone}"].rotation_quaternion', index=i)
+            fc.group = group
+            fc.keyframe_points.add(len(frames))
+            values = [float(q[i]) for q in bone_keys["rotation_quaternion"]]
+            fc.keyframe_points.foreach_set(
+                "co", [c for f, v in zip(frames, values, strict=True) for c in (f, v)]
+            )
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+            fc.update()
+    return action
+
+
+def push_candidate(obj: Any, action: Any, track_name: str) -> Any:
+    """A Replace strip, influence 1, extrapolation NOTHING, on a new track above the original."""
+    ad = obj.animation_data
+    if ad.nla_tracks.get(track_name) is not None:
+        raise ValueError(f"track {track_name!r} already exists")
+    track = ad.nla_tracks.new()
+    track.name = track_name
+    strip = track.strips.new(action.name, int(action.frame_range[0]), action)
+    strip.blend_type = "REPLACE"
+    strip.influence = 1.0
+    strip.extrapolation = "NOTHING"
+    strip.blend_in = strip.blend_out = 0.0
+    if hasattr(strip, "action_slot") and len(action.slots):
+        strip.action_slot = action.slots[0]
+    return track
+
+
+def _sample_all_bones(obj: Any) -> list[dict[str, Any]]:
+    bpy = _bpy()
+    scene = bpy.context.scene
+    start, end, _ = _scene_range()
+    deform = [b.name for b in obj.data.bones if b.use_deform]
+    heads: dict[str, list[list[float]]] = {b: [] for b in deform}
+    tails: dict[str, list[list[float]]] = {b: [] for b in deform}
+    for f in range(start, end + 1):
+        scene.frame_set(f)
+        world = obj.matrix_world
+        for name in deform:
+            pb = obj.pose.bones[name]
+            heads[name].append(_vec(world @ pb.head))
+            tails[name].append(_vec(world @ pb.tail))
+    return [{"name": b, "head": heads[b], "tail": tails[b]} for b in deform]
+
+
+def _save_copy(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _bpy().ops.wm.save_as_mainfile(
+        filepath=str(path), copy=True, compress=False, relative_remap=False
+    )
+
+
+# --------------------------------------------------------------------------- rendering
+
+CROP_DIRECTION = (0.9, -1.6, 0.6)  # ALGORITHMS §5: camera offset per unit of bbox extent
+
+
+def _configure_render(resolution_x: int, resolution_y: int, quality: int) -> None:
+    scene = _bpy().context.scene
+    scene.render.engine = "BLENDER_WORKBENCH"
+    scene.display.shading.light = "STUDIO"
+    scene.display.shading.color_type = "MATERIAL"
+    scene.render.resolution_x, scene.render.resolution_y = resolution_x, resolution_y
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "JPEG"
+    scene.render.image_settings.quality = quality
+    scene.render.use_file_extension = False
+
+
+def _crop_camera(center: list[float], radius: float) -> Any:
+    from mathutils import Vector  # type: ignore[import-not-found]
+
+    bpy = _bpy()
+    data = bpy.data.cameras.new("Kinesis_CropCam")
+    cam = bpy.data.objects.new("Kinesis_CropCam", data)
+    bpy.context.scene.collection.objects.link(cam)
+    target = Vector(center)
+    if radius < 0.1:  # orthographic fallback for tiny regions
+        data.type = "ORTHO"
+        data.ortho_scale = 0.5
+        offset = Vector(CROP_DIRECTION).normalized() * 2.0
+    else:
+        data.lens = 35
+        offset = Vector(CROP_DIRECTION) * radius
+    cam.location = target + offset
+    cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
+    return cam
+
+
+def _render_frames(camera: Any, frames: list[int], out_dir: Path, prefix: str) -> list[Path]:
+    bpy = _bpy()
+    scene = bpy.context.scene
+    scene.camera = camera
+    out_dir.mkdir(parents=True, exist_ok=True)
+    written = []
+    for i, f in enumerate(frames):
+        scene.frame_set(f)
+        path = out_dir / f"{prefix}_{i:04d}.jpg"
+        scene.render.filepath = str(path)
+        bpy.ops.render.render(write_still=True)
+        if not path.exists() or path.stat().st_size == 0:
+            raise RuntimeError(f"render produced no file for frame {f}")
+        written.append(path)
+    return written
+
+
+def render_previews(render: dict[str, Any], out_dir: Path, job_dir: Path) -> tuple[list[str], list[str], int]:
+    bpy = _bpy()
+    scene = bpy.context.scene
+    started = time.perf_counter()
+    first, last = int(render["crop_frames"][0]), int(render["crop_frames"][1])
+    frames = list(range(first, last + 1))
+    size = int(render["crop_resolution"])
+    _configure_render(size, size, int(render["jpeg_quality"]))
+    crop_cam = _crop_camera(render["crop_center"], float(render["crop_radius_m"]))
+    context_cam = scene.camera
+    crop = _render_frames(crop_cam, frames, out_dir, "crop")
+    context: list[Path] = []
+    if context_cam is not None:
+        _configure_render(size, size * 3 // 4, int(render["jpeg_quality"]))
+        context = _render_frames(context_cam, frames[:: int(render["context_every"])], out_dir, "ctx")
+    scene.camera = context_cam
+    bpy.data.objects.remove(crop_cam, do_unlink=True)
+    elapsed = int((time.perf_counter() - started) * 1000)
+
+    def rel(paths: list[Path]) -> list[str]:
+        return [p.relative_to(job_dir.resolve()).as_posix() for p in paths]
+
+    return rel(crop), rel(context), elapsed
+
+
+# --------------------------------------------------------------------------- Phase 2 commands
+
+
+def apply_render(spec: dict[str, Any], job_dir: Path) -> dict[str, Any]:
+    """Layer one candidate over the original, save the copy, re-extract, render previews.
+
+    With ``render_original`` (and no keys) it renders the untouched original with the same
+    cameras, for the A/B comparison.
+    """
+    obj = _armature(spec["armature"])
+    _require_unit_scale(obj)
+    original = _original_action(obj)
+    hash_before = action_hash(original)
+    push_original_down(obj)
+    keys = list(spec["keys"])
+    if spec.get("render_original"):
+        if keys:
+            raise ValueError("render_original takes no keys")
+    else:
+        if not keys:
+            raise ValueError("a candidate needs at least one keyed bone")
+        action = _new_candidate_action(obj, spec["action_name"], keys)
+        push_candidate(obj, action, spec["nla_track_name"])
+    samples = _sample_all_bones(obj)
+    output = job_path(job_dir, spec["output_blend"])
+    _save_copy(output)
+
+    crop: list[str] = []
+    context: list[str] = []
+    render_ms = 0
+    if spec.get("render"):
+        crop, context, render_ms = render_previews(
+            spec["render"], job_path(job_dir, spec["frames_dir"]), job_dir
+        )
+    return {
+        "protocol": PROTOCOL,
+        "ok": True,
+        "output_blend": spec["output_blend"],
+        "original_action_hash_before": hash_before,
+        "original_action_hash_after": action_hash(original),
+        "all_bones": samples,
+        "crop_frames": crop,
+        "context_frames": context,
+        "render_ms": render_ms,
+    }
+
+
+def export(spec: dict[str, Any], job_dir: Path) -> dict[str, Any]:
+    """Write the deliverable: the chosen candidate's file with only its track kept."""
+    bpy = _bpy()
+    bpy.ops.wm.open_mainfile(filepath=str(job_path(job_dir, spec["candidate_blend"])), load_ui=False)
+    obj = _armature(spec["armature"])
+    ad = obj.animation_data
+    keep = spec["keep_track"]
+    if ad is None or ad.nla_tracks.get(keep) is None:
+        raise LookupError(f"track {keep!r} not found")
+    for track in list(ad.nla_tracks):
+        if track.name.startswith(TRACK_PREFIX) and track.name not in (ORIGINAL_TRACK, keep):
+            ad.nla_tracks.remove(track)
+    ad.nla_tracks[keep].mute = False
+    _save_copy(job_path(job_dir, spec["output_blend"]))
+    return {
+        "protocol": PROTOCOL,
+        "ok": True,
+        "output_blend": spec["output_blend"],
+        "original_action_hash": action_hash(_original_action(obj)),
+    }
 
 
 HANDLERS: dict[str, Callable[[dict[str, Any], Path], dict[str, Any]]] = {
     "inspect": inspect,
     "extract": extract,
-    "apply_render": _not_implemented("Phase 2"),
-    "export": _not_implemented("Phase 2"),
+    "apply_render": apply_render,
+    "export": export,
 }
 
 

@@ -8,27 +8,45 @@ They need a Blender 4.5 executable at KINESIS_BLENDER_BIN and the committed fixt
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
 
-from kinesis.analysis.extraction import detect_from_extract, motion_from_extract
+from kinesis.analysis.extraction import detect_from_extract, foot_and_toe, motion_from_extract
 from kinesis.errors import SelectionInvalid, WorkerReportedFailure
+from kinesis.evaluation.metrics import Samples, compute_metrics
 from kinesis.jobs.local import LocalJobRunner
+from kinesis.jobs.specs import candidate_apply_spec, export_spec, original_render_spec
 from kinesis.jobs.worker_io import run_worker, spec_paths
-from kinesis.schemas import AnimationSelection, ErrorCode, Severity, SkeletalScope
+from kinesis.repair.candidates import generate_candidate, repair_input
+from kinesis.repair.render_plan import crop_render_spec
+from kinesis.schemas import (
+    DEFAULT_CANDIDATES,
+    AnimationSelection,
+    CandidateLabel,
+    CandidateMetrics,
+    ErrorCode,
+    Severity,
+    SkeletalScope,
+)
 from kinesis.schemas.worker import (
+    ApplyRenderResult,
+    ExportResult,
     ExtractResult,
     ExtractSpec,
     InspectResult,
     InspectSpec,
+    RenderSpec,
     WorkerCommand,
 )
+from kinesis.testing.fixture_pipeline import LEFT_LEG, metric_context
 from kinesis.testing.synthetic import RIG_BONES, foot_slide_v1
 
 pytestmark = [
@@ -41,6 +59,9 @@ FIXTURE_BLEND = REPO / "blender" / "fixtures" / "foot_slide_v1.blend"
 BUILDER = REPO / "blender" / "fixtures" / "build_fixture.py"
 TIMEOUT_S = 300
 MIRROR_TOLERANCE_M = 1e-4  # tests/golden/thresholds.json: blender_vs_numpy_mirror_max_mm
+THRESHOLDS: dict[str, Any] = json.loads(
+    (REPO / "tests" / "golden" / "thresholds.json").read_text(encoding="utf-8")
+)
 
 
 def _blender() -> Path:
@@ -213,17 +234,248 @@ def test_committed_fixture_matches_builder(
         assert np.abs(again.tails[name] - committed.tails[name]).max() < 1e-6, name
 
 
-# ------------------------------------------------------------------ Phase 2 placeholders
+# ------------------------------------------------------------------ Phase 2
 
-PHASE2 = [
-    "candidate_action_created_on_nla_track",
-    "original_action_fcurves_hash_unchanged",
-    "render_produces_expected_frame_count",
-    "metrics_produced_and_defect_reduced",
-    "export_writes_output_blend_with_selected_track",
-]
+PROBE = """
+import bpy, json, sys
+rig = bpy.data.objects["Rig"]
+ad = rig.animation_data
+out = {
+    "active_action": ad.action.name if ad.action else None,
+    "tracks": [
+        {"name": t.name, "mute": t.mute,
+         "strips": [{"action": s.action.name, "blend": s.blend_type,
+                     "extrapolation": s.extrapolation} for s in t.strips]}
+        for t in ad.nla_tracks
+    ],
+    "candidate_bones": sorted({
+        fc.data_path.split(chr(34))[1]
+        for a in bpy.data.actions if a.name.startswith("KIN_")
+        for layer in a.layers for strip in layer.strips
+        for bag in strip.channelbags for fc in bag.fcurves
+    }),
+}
+mute = [a for a in sys.argv if a.startswith("--mute=")]
+if mute:
+    ad.nla_tracks[mute[0][7:]].mute = True
+    sc = bpy.context.scene
+    pts = []
+    for f in range(sc.frame_start, sc.frame_end + 1):
+        sc.frame_set(f)
+        pts.append(list(rig.matrix_world @ rig.pose.bones["foot.L"].head))
+    out["muted_foot"] = pts
+print("PROBE" + json.dumps(out))
+"""
 
 
-@pytest.mark.parametrize("check", PHASE2)
-def test_blender_worker_phase2(check: str) -> None:
-    pytest.skip(f"Phase 2: {check}")
+def _probe(blend: Path, *extra: str) -> dict[str, Any]:
+    """Inspect the NLA layout of a saved .blend (and optionally evaluate with a track muted)."""
+    proc = subprocess.run(  # noqa: S603 - fixed argv, test-only
+        [
+            str(_blender()),
+            *("--background", "--factory-startup", "-noaudio", str(blend)),
+            *("--python-exit-code", "3", "--python-expr", PROBE, "--", *extra),
+        ],
+        capture_output=True,
+        timeout=TIMEOUT_S,
+        check=False,
+    )
+    out = proc.stdout.decode(errors="replace")
+    assert proc.returncode == 0, out[-2000:]
+    line = next(x for x in out.splitlines() if x.startswith("PROBE"))
+    data: dict[str, Any] = json.loads(line[len("PROBE") :])
+    return data
+
+
+def _jpeg_size(path: Path) -> tuple[int, int]:
+    """(width, height) from the first SOF marker of a JPEG."""
+    data = path.read_bytes()
+    i = 2
+    while i < len(data):
+        marker, length = data[i + 1], int.from_bytes(data[i + 2 : i + 4], "big")
+        if marker in (0xC0, 0xC1, 0xC2):
+            height = int.from_bytes(data[i + 5 : i + 7], "big")
+            width = int.from_bytes(data[i + 7 : i + 9], "big")
+            return width, height
+        i += 2 + length
+    raise AssertionError(f"no SOF marker in {path}")
+
+
+@dataclass(frozen=True)
+class AppliedCandidate:
+    job_dir: Path
+    candidate_id: str
+    result: ApplyRenderResult
+    metrics: CandidateMetrics
+    render: RenderSpec | None
+
+
+@pytest.fixture(scope="module")
+def phase2(
+    tmp_path_factory: pytest.TempPathFactory,
+    extracted: ExtractResult,
+    module_scope: SkeletalScope,
+) -> dict[CandidateLabel, AppliedCandidate]:
+    """Extract -> detect -> A/B -> apply_render on the real fixture (only A renders)."""
+    selection = AnimationSelection.model_validate(
+        {
+            "scene_id": "scn_fixture01",
+            "armature": "Rig",
+            "target_bones": ["foot.L"],
+            "temporal": {"frame_start": 45, "frame_end": 90},
+        }
+    )
+    motion, detection = detect_from_extract(selection, module_scope, extracted)
+    worst = detection.report.worst
+    assert worst is not None
+    interval = (worst.start, worst.end)
+    inp = repair_input(motion, LEFT_LEG, interval, detection.floor_height)
+    original = Samples.from_worker(motion.scene_range[0], extracted.all_bones)
+    job_dir = _job_dir(tmp_path_factory.mktemp("phase2"))
+    runner = LocalJobRunner(_blender())
+    out: dict[CandidateLabel, AppliedCandidate] = {}
+    for label, params in DEFAULT_CANDIDATES.items():
+        result = generate_candidate(inp, params)
+        candidate_id = label.value.lower() * 16
+        render = None
+        if label is CandidateLabel.A:
+            ankle, ball = foot_and_toe(motion, "foot.L", "toe.L")
+            k = params.blend_frames
+            render = crop_render_spec(
+                ankle,
+                ball,
+                motion.context_range[0],
+                (interval[0] - k, interval[1] + k),
+                motion.context_range,
+            )
+        node, spec = candidate_apply_spec(
+            "jobtest01", label, candidate_id, "Rig", result.bone_keys(), render
+        )
+        applied = asyncio.run(
+            run_worker(
+                runner,
+                job_dir,
+                node,
+                WorkerCommand.APPLY_RENDER,
+                spec,
+                ApplyRenderResult,
+                TIMEOUT_S,
+            )
+        )
+        metrics = compute_metrics(
+            original,
+            Samples.from_worker(motion.scene_range[0], applied.all_bones),
+            metric_context(params, interval, detection.floor_height),
+            result.ik_unreachable_frames,
+        )
+        out[label] = AppliedCandidate(job_dir, candidate_id, applied, metrics, render)
+    return out
+
+
+def test_original_action_fcurves_hash_unchanged(
+    phase2: dict[CandidateLabel, AppliedCandidate], extracted: ExtractResult
+) -> None:
+    for c in phase2.values():
+        assert c.result.original_action_hash_before == extracted.original_action_hash
+        assert c.result.original_action_hash_after == extracted.original_action_hash
+
+
+def test_candidate_action_created_on_nla_track(
+    phase2: dict[CandidateLabel, AppliedCandidate],
+) -> None:
+    c = phase2[CandidateLabel.A]
+    probe = _probe(c.job_dir / c.result.output_blend)
+    assert probe["active_action"] is None
+    assert [t["name"] for t in probe["tracks"]] == ["Kinesis:Original", "Kinesis:A"]
+    (orig_strip,) = probe["tracks"][0]["strips"]
+    assert orig_strip == {
+        "action": "Rig_foot_slide_v1",
+        "blend": "REPLACE",
+        "extrapolation": "HOLD",
+    }
+    (cand_strip,) = probe["tracks"][1]["strips"]
+    assert cand_strip == {
+        "action": "KIN_jobtest01_A",
+        "blend": "REPLACE",
+        "extrapolation": "NOTHING",
+    }
+    assert probe["candidate_bones"] == ["foot.L", "shin.L", "thigh.L"]
+
+
+def test_metrics_produced_and_defect_reduced(
+    phase2: dict[CandidateLabel, AppliedCandidate],
+) -> None:
+    """The golden thresholds hold on Blender's own evaluation, not only on the mirror."""
+    t = THRESHOLDS["all_candidates"]
+    for label, c in phase2.items():
+        m = c.metrics
+        minimum = THRESHOLDS["candidates"][label.value]["slip_reduction_pct_min"]
+        assert m.slip_reduction_pct >= minimum, label
+        assert m.collateral_max_cm <= t["collateral_max_cm_max"], label
+        assert m.outside_window_max_cm <= t["outside_window_max_cm_max"], label
+        assert m.penetration_max_cm <= t["penetration_max_cm_max"], label
+        assert m.jerk_rms_ratio <= t["jerk_rms_ratio_max"], label
+        assert m.joint_limit_violations == 0, label
+        assert not m.gated, m.gate_reasons
+
+
+def test_render_produces_expected_frame_count(
+    phase2: dict[CandidateLabel, AppliedCandidate],
+) -> None:
+    c = phase2[CandidateLabel.A]
+    assert c.render is not None
+    first, last = c.render.crop_frames
+    frames = last - first + 1
+    assert len(c.result.crop_frames) == frames
+    assert len(c.result.context_frames) == len(range(0, frames, c.render.context_every))
+    assert c.result.render_ms > 0
+    for rel in (c.result.crop_frames[0], c.result.crop_frames[-1]):
+        assert _jpeg_size(c.job_dir / rel) == (512, 512)
+    assert _jpeg_size(c.job_dir / c.result.context_frames[0]) == (512, 384)
+    assert not phase2[CandidateLabel.B].result.crop_frames  # B was applied without a render
+
+
+def test_export_writes_output_blend_with_selected_track(
+    phase2: dict[CandidateLabel, AppliedCandidate],
+    extracted: ExtractResult,
+    module_scope: SkeletalScope,
+) -> None:
+    c = phase2[CandidateLabel.B]
+    node, spec = export_spec("foot_slide_v1", "Rig", CandidateLabel.B, c.candidate_id)
+    runner = LocalJobRunner(_blender())
+    result = asyncio.run(
+        run_worker(runner, c.job_dir, node, WorkerCommand.EXPORT, spec, ExportResult, TIMEOUT_S)
+    )
+    assert result.original_action_hash == extracted.original_action_hash
+    output = c.job_dir / result.output_blend
+    probe = _probe(output, "--mute=Kinesis:B")
+    assert [t["name"] for t in probe["tracks"]] == ["Kinesis:Original", "Kinesis:B"]
+    assert not any(t["mute"] for t in probe["tracks"])
+    # Muting the candidate track restores the original motion exactly.
+    original_foot = next(b for b in extracted.all_bones if b.name == "foot.L").head
+    assert np.abs(np.array(probe["muted_foot"]) - np.array(original_foot)).max() < 1e-6
+    # With the track enabled, the exported file evaluates to the candidate.
+    exported = _extract(_job_dir(c.job_dir.parent / "exported", output), module_scope, (35, 100))
+    expected = Samples.from_worker(1, c.result.all_bones)
+    got = motion_from_extract(exported)
+    assert np.abs(got.heads["foot.L"] - expected.heads["foot.L"]).max() < 1e-6
+
+
+def test_render_original_uses_the_same_cameras(
+    phase2: dict[CandidateLabel, AppliedCandidate], extracted: ExtractResult
+) -> None:
+    a = phase2[CandidateLabel.A]
+    assert a.render is not None
+    node, spec = original_render_spec("Rig", a.render)
+    runner = LocalJobRunner(_blender())
+    result = asyncio.run(
+        run_worker(
+            runner, a.job_dir, node, WorkerCommand.APPLY_RENDER, spec, ApplyRenderResult, TIMEOUT_S
+        )
+    )
+    assert len(result.crop_frames) == len(a.result.crop_frames)
+    assert len(result.context_frames) == len(a.result.context_frames)
+    assert result.original_action_hash_after == extracted.original_action_hash
+    original = Samples.from_worker(1, extracted.all_bones)
+    rendered = Samples.from_worker(1, result.all_bones)
+    assert np.abs(rendered.heads["foot.L"] - original.heads["foot.L"]).max() < 1e-6

@@ -198,8 +198,8 @@ Spike S1 verified this layout on Blender 4.5.14; see [ADR 0004](ADR/0004-non-des
 - The input `.blend` is copied into the job directory and never written.
 - The original Action is never edited.
 - Each candidate is a **new Action** (`KIN_<job>_<label>`) holding keys only for the chain bones (thigh, shin, foot), and only on frames inside the repair window plus the blend frames.
-- In the job's copy, a bottom NLA strip (`Kinesis/Original`, Replace, HOLD) references the original Action, and the active action slot is cleared. The Action data stays untouched. S1 showed that an active action is evaluated *above* the NLA stack and would override the candidate.
-- The worker attaches each candidate as an NLA strip on a new track `Kinesis/<label>` (Replace, influence 1, extrapolation NOTHING) above it. Any bone with no channel in the candidate Action evaluates from the original.
+- In the job's copy, a bottom NLA strip (`Kinesis:Original`, Replace, HOLD) references the original Action, and the active action slot is cleared. The Action data stays untouched. S1 showed that an active action is evaluated *above* the NLA stack and would override the candidate.
+- The worker attaches each candidate as an NLA strip on a new track `Kinesis:<label>` (Replace, influence 1, extrapolation NOTHING) above it. Any bone with no channel in the candidate Action evaluates from the original.
 - `export` writes `output/<scene>_kinesis.blend` with the selected track enabled and the others removed. Muting the track restores the original animation exactly.
 
 ## 6. Model provider

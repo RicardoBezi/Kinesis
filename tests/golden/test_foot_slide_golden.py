@@ -160,7 +160,7 @@ def test_snapshot_matches_measured_values(run: FixtureRun) -> None:
     """Regenerate with ``KINESIS_UPDATE_GOLDEN=1`` and explain the change in the commit."""
     measured = _measured(run)
     if os.environ.get("KINESIS_UPDATE_GOLDEN") == "1":
-        SNAPSHOT.write_text(json.dumps(measured, indent=2) + "\n", encoding="utf-8")
+        SNAPSHOT.write_text(json.dumps(measured, indent=2) + "\n", encoding="utf-8", newline="\n")
     stored = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
     assert stored["algorithm_version"] == measured["algorithm_version"]
     assert stored["detected_interval"] == measured["detected_interval"]

@@ -8,10 +8,13 @@ The animator must be able to compare a repair with the original and revert it, w
 ## Decision
 - **The source file is never written.** The uploaded `.blend` is copied into the job directory, and the copy is never written either.
 - **Each candidate is its own Action.** The Action is named `KIN_<job>_<label>`. It holds keys only for the chain bones, and only within `[a−k, b+k]`.
-- **The original moves to an NLA strip; its data stays untouched.** In the job's copy, a bottom NLA strip on track `Kinesis/Original` (Replace, extrapolation HOLD) references the original Action, and the active action slot is cleared. The Action datablock is not modified; only the AnimData references change.
-- **Candidates sit on NLA tracks above it.** Each candidate Action is pushed as a strip on track `Kinesis/<label>` (Replace, influence 1, extrapolation NOTHING).
+- **The original moves to an NLA strip; its data stays untouched.** In the job's copy, a bottom NLA strip on track `Kinesis:Original` (Replace, extrapolation HOLD) references the original Action, and the active action slot is cleared. The Action datablock is not modified; only the AnimData references change.
+- **Candidates sit on NLA tracks above it.** Each candidate Action is pushed as a strip on track `Kinesis:<label>` (Replace, influence 1, extrapolation NOTHING).
 - **Export.** The `export` command writes `output/<scene>_kinesis.blend`. That file contains the original Action unchanged, with the chosen track enabled.
 - **Tests prove the original is untouched.** Integration tests hash every F-curve keyframe of the original Action before and after, and compare the hashes.
+
+## Naming note (Phase 2)
+Track names use a colon (`Kinesis:Original`, `Kinesis:A`) rather than the slash used in spike S1, because worker contract names are `BlenderName`s, which exclude `/` so that names stay safe in logs and file names.
 
 ## S1 result (Blender 4.5.14 LTS, Windows, 2026-10-03)
 
