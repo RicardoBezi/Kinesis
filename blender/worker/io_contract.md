@@ -35,10 +35,16 @@ var/jobs/<job_id>/
 |---|---|---|---|
 | `inspect` | `InspectSpec` | `InspectResult` (armatures, bones, frame range, fps, Blender version, `autoexec_disabled`) | the result only |
 | `extract` | `ExtractSpec` (armature, chain bones, context frames) | `ExtractResult`: rest matrices, per-frame chain world matrices and local quaternions over the context window, world head/tail of **all** bones over the **whole** scene, plus a hash of the original action | the result only |
-| `apply_render` | `ApplyRenderSpec` (keys for thigh, shin and foot; action and track names; render settings) | `ApplyRenderResult`: original-action hash before and after, re-extracted all-bone samples, frame paths, `render_ms` | `candidate.blend`, frames |
+| `apply_render` | `ApplyRenderSpec` (keys for thigh, shin and foot; action and track names; render settings). With `render_original: true` and no keys, it renders the untouched original with the same cameras | `ApplyRenderResult`: original-action hash before and after, re-extracted all-bone samples, frame paths, `render_ms` | `candidate.blend`, frames |
 | `export` | `ExportSpec` | `ExportResult` | `output/*.blend` |
 
 On failure the worker writes a `WorkerFailure {ok: false, error_type, message}` and exits non-zero.
+
+## NLA layout (ADR 0004)
+- The original Action is referenced from a bottom strip on track `Kinesis:Original` (Replace, HOLD), and the active action is cleared. The Action datablock is never edited.
+- Each candidate is a new slotted Action `KIN_<job>_<label>` holding `rotation_quaternion` keys for the keyable chain bones only, on a strip on track `Kinesis:<label>` (Replace, influence 1, extrapolation NOTHING).
+- Chain bones must use quaternion rotation; otherwise the worker reports `UnsupportedRig`.
+- Crop frames are `crop_0000.jpg …` (one per context frame, square). Context frames are `ctx_0000.jpg …` (every `context_every` frames, 4:3) from the scene camera.
 
 ## Conventions
 - Matrices are 4×4 and row-major (`[row][col]`), matching `mathutils.Matrix` indexing.
