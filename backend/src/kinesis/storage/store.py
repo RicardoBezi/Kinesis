@@ -1,4 +1,4 @@
-"""Persistence interfaces (ADR 0005). SQLite implements JobStore in Phase 3."""
+"""Persistence interfaces (ADR 0005), implemented by ``kinesis.storage.sqlite``."""
 
 from __future__ import annotations
 
@@ -59,6 +59,8 @@ class JobStore(Protocol):
         self, job_id: str, *, after_seq: int, limit: int
     ) -> Sequence[JobEvent]: ...
 
+    async def list_jobs_with_status(self, status: JobStatus) -> list[str]: ...
+
     async def record_decision(self, decision: HumanDecision) -> None: ...
 
     async def list_decisions(self) -> Sequence[HumanDecision]: ...
@@ -71,8 +73,18 @@ class ArtifactStore(Protocol):
     def job_dir(self, job_id: str) -> Path: ...
 
     async def register(
-        self, job_id: str, relpath: str, kind: ArtifactKind, media_type: str
+        self,
+        job_id: str,
+        relpath: str,
+        kind: ArtifactKind,
+        media_type: str,
+        *,
+        frames: Sequence[str] = (),
+        first_frame: int | None = None,
+        frame_step: int | None = None,
     ) -> ArtifactReference: ...
+
+    async def media_type(self, artifact_id: str) -> str: ...
 
     async def resolve(self, artifact_id: str, frame: int | None = None) -> Path: ...
 
