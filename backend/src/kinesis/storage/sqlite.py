@@ -82,6 +82,9 @@ class Database:
         self._busy_retries = busy_retries
         with self._lock:
             self._conn.execute("PRAGMA journal_mode=WAL")
+            # WAL + NORMAL: no corruption on crash; only the latest commits can be lost on power
+            # failure. FULL fsyncs every event append and makes a job ~10x slower.
+            self._conn.execute("PRAGMA synchronous=NORMAL")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.executescript(SCHEMA)
 

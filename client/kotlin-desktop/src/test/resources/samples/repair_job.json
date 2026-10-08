@@ -183,6 +183,7 @@
   "idempotency_key": "sample-key-0001",
   "job_id": "job_01j9zsample",
   "last_event_seq": 2,
+  "original_artifacts": [],
   "output": null,
   "plan": {
     "candidates": {

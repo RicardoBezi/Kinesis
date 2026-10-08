@@ -43,6 +43,10 @@ class RepairJob(KinesisModel):
     defect: DefectReport | None = None
     plan: RepairPlan | None = None
     candidates: tuple[RepairCandidate, ...] = ()
+    original_artifacts: tuple[ArtifactReference, ...] = Field(
+        default=(),
+        description="The untouched original rendered with the candidates' cameras (for A/B)",
+    )
     evaluation: EvaluationReport | None = None
     decision: HumanDecision | None = None
     output: ArtifactReference | None = None

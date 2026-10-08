@@ -65,6 +65,11 @@ class LocalJobRunner:
             )
             try:
                 exit_code = await asyncio.wait_for(proc.wait(), invocation.timeout_s)
+            except asyncio.CancelledError:  # job cancelled: never leave Blender running
+                with contextlib.suppress(ProcessLookupError):
+                    proc.kill()
+                await asyncio.shield(proc.wait())
+                raise
             except TimeoutError:
                 with contextlib.suppress(ProcessLookupError):
                     proc.kill()

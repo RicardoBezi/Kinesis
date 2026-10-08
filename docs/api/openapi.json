@@ -1493,6 +1493,15 @@
             "title": "Last Event Seq",
             "type": "integer"
           },
+          "original_artifacts": {
+            "default": [],
+            "description": "The untouched original rendered with the candidates' cameras (for A/B)",
+            "items": {
+              "$ref": "#/components/schemas/ArtifactReference"
+            },
+            "title": "Original Artifacts",
+            "type": "array"
+          },
           "output": {
             "anyOf": [
               {

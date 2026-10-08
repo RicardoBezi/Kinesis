@@ -62,3 +62,77 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     for item in items:
         if "live_nebius" in item.keywords:
             item.add_marker(skip)
+
+
+# ---------------------------------------------------------------- Phase 3: service harness
+
+FAKE_BLEND = b"BLENDER-v405" + b"\0" * 64  # passes the magic check; the fake runner ignores it
+
+
+class SleepRecorder:
+    """Injected in place of asyncio.sleep, so retries and backoff take no wall time."""
+
+    def __init__(self) -> None:
+        self.calls: list[float] = []
+
+    async def __call__(self, seconds: float) -> None:
+        self.calls.append(seconds)
+
+
+async def chunks(data: bytes, size: int = 1024) -> Any:
+    for i in range(0, len(data), size):
+        yield data[i : i + size]
+
+
+@pytest.fixture
+def make_service(tmp_path: Path) -> Any:
+    """Factory: ``make_service(runner=..., provider=..., cache=..., **config)``."""
+    from kinesis.jobs.service import JobService, ServiceConfig
+    from kinesis.providers.null import NullProvider
+    from kinesis.storage.sqlite import Database, SqliteArtifactStore, SqliteJobStore
+    from kinesis.testing.fake_runner import FakeJobRunner
+
+    created: list[Any] = []
+
+    def factory(runner: Any = None, provider: Any = None, cache: Any = None, **config: Any) -> Any:
+        db = Database(tmp_path / f"k{len(created)}.db")
+        sleep = SleepRecorder()
+        service = JobService(
+            SqliteJobStore(db),
+            SqliteArtifactStore(db, tmp_path / "jobs"),
+            runner if runner is not None else FakeJobRunner(),
+            provider if provider is not None else NullProvider(),
+            ServiceConfig(data_dir=tmp_path, **config),
+            cache=cache,
+            sleep=sleep,
+            jitter=lambda: 1.0,
+        )
+        service.sleep_recorder = sleep  # type: ignore[attr-defined]
+        created.append(service)
+        return service
+
+    return factory
+
+
+def job_request(**selection: Any) -> Any:
+    from kinesis.schemas import CreateRepairJobRequest
+
+    body = {
+        "plan_mode": selection.pop("plan_mode", "AUTO"),
+        "selection": {
+            "scene_id": selection.pop("scene_id", "scn_placeholder"),
+            "armature": "Rig",
+            "target_bones": ["foot.L"],
+            "temporal": {"frame_start": 45, "frame_end": 90},
+            **selection,
+        },
+    }
+    return CreateRepairJobRequest.model_validate(body)
+
+
+async def run_job(service: Any, key: str = "key-00000001", **selection: Any) -> Any:
+    """Upload the fake scene, create a job, wait for the DAG, return the stored job."""
+    scene = await service.upload_scene(chunks(FAKE_BLEND))
+    job, _ = await service.create_job(job_request(scene_id=scene.scene_id, **selection), key)
+    await service.wait_idle()
+    return await service.get_job(job.job_id)
