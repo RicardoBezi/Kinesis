@@ -122,6 +122,10 @@ Artifacts are referenced by `ArtifactReference.uri`.
 | GET | `/v1/metrics` | 200 Prometheus text |
 | GET | `/v1/stats/product` | 200 `ProductStats` (see [METRICS.md](METRICS.md)) |
 
-## Phase 0 status
+## Implementation status
 
-All routes and schemas are frozen. Handlers return `501 NOT_IMPLEMENTED` with a Problem body naming the phase that implements them. The exceptions are `/v1/health` and `/v1/metrics`, which already work. `tests/unit/test_api_contract.py` pins these contracts.
+Since Phase 3, every route works except `/v1/health/providers` (Phase 4) and `/v1/stats/product` (Phase 5), which return `501 NOT_IMPLEMENTED` Problems. `tests/unit/test_api_contract.py` pins the contracts, and `tests/integration/test_api_jobs.py` covers their behaviour.
+
+Two details that the tables above leave open:
+- **Choosing a FAILED candidate** returns `422 VALIDATION_ERROR`.
+- **A scene that fails headless inspection** returns `422 FILE_INVALID` with the worker's reason.

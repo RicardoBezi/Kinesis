@@ -57,8 +57,8 @@ The pytest config sets `filterwarnings = error`, so new deprecations fail the bu
 | Objective metrics and ranking | unit | each formula from ALGORITHMS §4; gating || **2 ✅** |
 | Non-destructive apply | blender | the original Action hash is unchanged; the NLA track exists; muting it restores the original exactly | 2 |
 | Render | blender | the expected frame count and resolution | 2 |
-| Orchestration | unit + fault | concurrency (A and B overlap in time), retries, breaker, cancellation, partial failure | 3 |
-| API behaviour | integration | the happy path through the decision; the invalid cases in spec §11; idempotency | 3 |
+| Orchestration | unit + fault | concurrency (A and B overlap in time), retries, breaker, cancellation, partial failure || **3 ✅** |
+| API behaviour | integration | the happy path through the decision; the invalid cases in spec §11; idempotency || **3 ✅** |
 | Provider transport | contract | 429/500/400/timeout classification; fence stripping; usage parsed | 4 |
 | Live Nebius | live | model discovery, plan, multimodal evaluation | 4 |
 | Kotlin client | gradle test | serialization round-trips; state reducer; A/B selection; poll recovery; loading and error states | 0 (serialization) / 5 |

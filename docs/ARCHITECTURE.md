@@ -119,8 +119,10 @@ flowchart TD
   D --> P[plan_repair]
   P --> GA[generate_A] --> RA[apply_render_A] --> MA2[metrics_A]
   P --> GB[generate_B] --> RB[apply_render_B] --> MB[metrics_B]
+  P --> RO[render_original]
   MA2 --> E["evaluate (join ANY_SUCCESS)"]
   MB --> E
+  RO --> E
   E --> R((AWAITING_DECISION))
 ```
 
@@ -136,7 +138,10 @@ flowchart TD
 | `generate_X` | pure | features, plan.candidates[X] | per-frame local rotations for thigh/shin/foot | none | 10 s | `candidate_id` |
 | `apply_render_X` | worker | scene, generated keys | candidate `.blend`, re-extracted all-bone samples, crop and context frames | 1× on `WorkerCrashed` | 300 s | `candidate_id ‖ render_config_hash` |
 | `metrics_X` | pure | original + candidate samples | `CandidateMetrics` | none | 5 s | `candidate_id` |
-| `evaluate` | provider + pure (join ANY_SUCCESS) | succeeded candidates, frames, metrics | `EvaluationReport` | per-call 2×; on failure `evaluator_status=DEGRADED` | 120 s | none |
+| `render_original` | worker | scene, crop camera | the untouched original rendered with the candidates' cameras (`RepairJob.original_artifacts`) | 1× on `WorkerCrashed` | 300 s | none |
+| `evaluate` | provider + pure (join ANY_SUCCESS over `metrics_A`, `metrics_B`, `render_original`; it skips itself when no candidate succeeded) | succeeded candidates, frames, metrics | `EvaluationReport` | per-call 2×; on failure `evaluator_status=DEGRADED` | 120 s | none |
+
+Provider calls (`plan_repair`, `evaluate`) retry **inside** the node, behind the endpoint's breaker, because exhausting their retries must fall back (a deterministic plan, a DEGRADED evaluation) rather than fail the node. Worker nodes retry at the node level.
 
 The decision DAG is a single node:
 - `apply_selected`: a worker call that writes the chosen candidate as an NLA track into `output/<scene>_kinesis.blend`. Retry 1×, timeout 120 s.
