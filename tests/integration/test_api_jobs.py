@@ -306,3 +306,10 @@ async def test_not_ready_resources_are_409(api_factory: Any) -> None:
     assert_problem(await api.client.get(f"/v1/jobs/{job_id}/evaluation"), 409, "NOT_READY")
     cancelled = await api.client.post(f"/v1/jobs/{job_id}/cancel")
     assert cancelled.json()["status"] == "CANCELLED"
+
+
+async def test_metrics_endpoint_counts_jobs_and_nodes(api: Api) -> None:
+    await api.ready_job()
+    text = (await api.client.get("/v1/metrics")).text
+    assert 'kinesis_jobs_finished_total{status="AWAITING_DECISION"}' in text
+    assert 'kinesis_node_seconds_count{node="extract_scope",status="SUCCEEDED"}' in text

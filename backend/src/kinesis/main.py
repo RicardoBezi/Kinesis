@@ -13,6 +13,8 @@ from kinesis.api import routes_artifacts, routes_health, routes_jobs, routes_sce
 from kinesis.api.deps import ensure_service
 from kinesis.api.errors import install_error_handlers
 from kinesis.jobs.service import JobService
+from kinesis.observability.context import configure_logging
+from kinesis.settings import get_settings
 
 log = logging.getLogger("kinesis.api")
 
@@ -23,6 +25,7 @@ def create_app(service: JobService | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        configure_logging(get_settings().kinesis_log_level)
         svc = ensure_service(app)
         recovered = await svc.recover()
         if recovered:

@@ -27,6 +27,8 @@ from kinesis.jobs.pipeline import ANALYSIS_NODES, JobContext, build_repair_dag, 
 from kinesis.jobs.runner import JobRunner
 from kinesis.jobs.specs import export_spec
 from kinesis.jobs.worker_io import run_worker, spec_paths
+from kinesis.observability.context import bind
+from kinesis.observability.metrics import JOBS_FINISHED, NODE_SECONDS
 from kinesis.orchestration.breaker import CircuitBreaker
 from kinesis.orchestration.cache import Cache
 from kinesis.orchestration.dag import Node, NodeStatus, RetryPolicy
@@ -271,7 +273,25 @@ class JobService:
         while self._tasks:
             await asyncio.gather(*list(self._tasks.values()), return_exceptions=True)
 
+    async def _transition(self, job_id: str, to: JobStatus, message: str) -> RepairJob:
+        job = await self.store.transition(job_id, to, message=message)
+        if to is not JobStatus.RUNNING and to is not JobStatus.APPLYING:
+            JOBS_FINISHED.labels(to.value).inc()
+        return job
+
+    @staticmethod
+    def _observe(result: DagResult) -> None:
+        for node_id, outcome in result.outcomes.items():
+            if outcome.status not in (NodeStatus.PENDING, NodeStatus.SKIPPED):
+                NODE_SECONDS.labels(node_id, outcome.status.value).observe(
+                    outcome.elapsed_ms / 1000
+                )
+
     async def _run(self, job_id: str, scene: SceneRef) -> None:
+        with bind(job_id=job_id):
+            await self._run_bound(job_id, scene)
+
+    async def _run_bound(self, job_id: str, scene: SceneRef) -> None:
         job = await self.store.transition(job_id, JobStatus.RUNNING, message="repair DAG started")
         ctx = JobContext(self, job, scene, self.artifacts.job_dir(job_id))
         try:
@@ -284,6 +304,7 @@ class JobService:
                 jitter=self.jitter,
             )
             result = await runner.run(nodes)
+            self._observe(result)
             await self._finalize(ctx, result)
         except asyncio.CancelledError:
             raise  # cancel() owns the CANCELLED transition
@@ -294,7 +315,7 @@ class JobService:
     async def _fail(self, ctx: JobContext, error: ErrorInfo) -> None:
         await ctx.mutate(lambda j: j.model_copy(update={"error": error}))
         with contextlib.suppress(InvalidTransition):
-            await self.store.transition(ctx.job_id, JobStatus.FAILED, message=error.message)
+            await self._transition(ctx.job_id, JobStatus.FAILED, error.message)
 
     async def _finalize(self, ctx: JobContext, result: DagResult) -> None:
         for node_id in ANALYSIS_NODES:
@@ -304,13 +325,13 @@ class JobService:
                 return
         if result.outcomes["defect_report"].status is NodeStatus.SKIPPED:
             # defect_report only skips itself (SkipNode) when there is nothing to repair
-            await self.store.transition(
-                ctx.job_id, JobStatus.COMPLETED, message="no defect detected; nothing to repair"
+            await self._transition(
+                ctx.job_id, JobStatus.COMPLETED, "no defect detected; nothing to repair"
             )
             return
         if any(c.status is CandidateStatus.SUCCEEDED for c in ctx.job.candidates):
-            await self.store.transition(
-                ctx.job_id, JobStatus.AWAITING_DECISION, message="candidates ready for review"
+            await self._transition(
+                ctx.job_id, JobStatus.AWAITING_DECISION, "candidates ready for review"
             )
             return
         await self._fail(
@@ -357,9 +378,7 @@ class JobService:
         await self.store.record_decision(decision)
         await self.store.save_job(job.model_copy(update={"decision": decision}))
         if candidate is None:
-            return await self.store.transition(
-                job_id, JobStatus.REJECTED, message="all candidates rejected"
-            )
+            return await self._transition(job_id, JobStatus.REJECTED, "all candidates rejected")
         applying = await self.store.transition(
             job_id, JobStatus.APPLYING, message=f"applying candidate {candidate.label.value}"
         )
@@ -368,6 +387,12 @@ class JobService:
         return applying
 
     async def _apply(self, job: RepairJob, scene: SceneRef, candidate: RepairCandidate) -> None:
+        with bind(job_id=job.job_id):
+            await self._apply_bound(job, scene, candidate)
+
+    async def _apply_bound(
+        self, job: RepairJob, scene: SceneRef, candidate: RepairCandidate
+    ) -> None:
         ctx = JobContext(self, job, scene, self.artifacts.job_dir(job.job_id))
         label: CandidateLabel = candidate.label
 
@@ -402,7 +427,7 @@ class JobService:
             raise
         outcome = result.outcomes["apply_selected"]
         if outcome.status is NodeStatus.SUCCEEDED:
-            await self.store.transition(job.job_id, JobStatus.COMPLETED, message="repair applied")
+            await self._transition(job.job_id, JobStatus.COMPLETED, "repair applied")
         else:
             await self._fail(ctx, error_info(outcome.error, "apply_selected"))
 
@@ -419,9 +444,7 @@ class JobService:
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
         try:
-            return await self.store.transition(
-                job_id, JobStatus.CANCELLED, message="cancelled by user"
-            )
+            return await self._transition(job_id, JobStatus.CANCELLED, "cancelled by user")
         except InvalidTransition as exc:
             current = await self.get_job(job_id)
             raise RequestError(
@@ -440,7 +463,7 @@ class JobService:
                     code=ErrorCode.INTERNAL, message="interrupted by a server restart"
                 )
                 await self.store.save_job(job.model_copy(update={"error": error}))
-                await self.store.transition(job_id, JobStatus.FAILED, message=error.message)
+                await self._transition(job_id, JobStatus.FAILED, error.message)
                 count += 1
         return count
 

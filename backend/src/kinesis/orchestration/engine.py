@@ -26,6 +26,7 @@ from enum import StrEnum
 from typing import Any
 
 from kinesis.errors import KinesisError
+from kinesis.observability.context import attempt_var, candidate_var, node_var
 from kinesis.orchestration.cache import Cache
 from kinesis.orchestration.dag import Node, NodeStatus, should_run, validate_graph
 from kinesis.schemas.common import ErrorCode
@@ -175,6 +176,9 @@ class DagRunner:
 
     async def _run_node(self, node: Node, inputs: Mapping[str, Any]) -> NodeOutcome:
         started = time.monotonic()
+        # This coroutine is its own task, so these bindings stay local to the node.
+        node_var.set(node.id)
+        candidate_var.set(node.tags.get("candidate"))
 
         def done(outcome: NodeOutcome) -> NodeOutcome:
             outcome.elapsed_ms = int((time.monotonic() - started) * 1000)
@@ -192,6 +196,7 @@ class DagRunner:
         attempt = 0
         while True:
             attempt += 1
+            attempt_var.set(attempt)
             await self._emit(NodeEvent(NodeEventKind.STARTED, node, attempt))
             try:
                 value = await asyncio.wait_for(node.fn(inputs), node.timeout_s)

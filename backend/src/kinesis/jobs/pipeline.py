@@ -32,6 +32,7 @@ from kinesis.evaluation.metrics import (
 )
 from kinesis.jobs.specs import candidate_apply_spec, original_render_spec
 from kinesis.jobs.worker_io import run_worker, spec_paths
+from kinesis.observability.metrics import PLAN_FALLBACKS
 from kinesis.orchestration.cache import cache_key
 from kinesis.orchestration.dag import JoinPolicy, Node, RetryPolicy
 from kinesis.orchestration.engine import Codec, NodeEvent, NodeEventKind, SkipNode
@@ -700,6 +701,7 @@ async def _plan(ctx: JobContext, analysis: Analysis, scene_range: tuple[int, int
         )
     except ProviderError as exc:
         reason = f"{exc.code.value}: {describe(exc)}"
+        PLAN_FALLBACKS.labels(exc.code.value).inc()
         await ctx.emit(
             JobEventType.PLAN_REJECTED,
             node="plan_repair",
@@ -709,6 +711,7 @@ async def _plan(ctx: JobContext, analysis: Analysis, scene_range: tuple[int, int
         return default_plan(job.selection, scope, reason)
     plan = result.value or default_plan(job.selection, scope, "provider returned no plan")
     if result.status is ResultStatus.INVALID:
+        PLAN_FALLBACKS.labels(ErrorCode.PLAN_INVALID.value).inc()
         await ctx.emit(
             JobEventType.PLAN_REJECTED,
             node="plan_repair",

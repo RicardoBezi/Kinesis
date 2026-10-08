@@ -406,3 +406,49 @@ async def test_redis_unavailable_degrades_to_memory(caplog: pytest.LogCaptureFix
         assert await cache.set_if_absent("k", "w", ttl_s=60) is False
     assert cache.degraded_calls == 3
     assert [r.message for r in caplog.records].count("cache.degraded") == 1  # rate-limited
+
+
+# ------------------------------------------------------------------ correlation
+
+
+async def test_log_records_carry_node_candidate_and_attempt(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import logging
+
+    from kinesis.observability.context import CorrelationFilter, bind
+
+    logger = logging.getLogger("kinesis.test")
+    calls = 0
+
+    async def noisy(_: Mapping[str, Any]) -> None:
+        nonlocal calls
+        calls += 1
+        logger.warning("inside")
+        if calls == 1:
+            raise WorkerCrashed("first attempt")
+
+    caplog.handler.addFilter(CorrelationFilter())
+    node = Node("apply_render_A", noisy, retry=RetryPolicy(max_attempts=2), tags={"candidate": "A"})
+    with caplog.at_level("WARNING", logger="kinesis.test"), bind(job_id="job_corr01"):
+        await runner().run([node])
+    records = [r for r in caplog.records if r.getMessage() == "inside"]
+    assert [(r.job_id, r.node, r.candidate, r.attempt) for r in records] == [  # type: ignore[attr-defined]
+        ("job_corr01", "apply_render_A", "A", 1),
+        ("job_corr01", "apply_render_A", "A", 2),
+    ]
+
+
+def test_json_formatter_includes_correlation_fields() -> None:
+    import logging
+
+    from kinesis.observability.context import CorrelationFilter, JsonFormatter, bind
+
+    record = logging.LogRecord("kinesis.x", logging.INFO, __file__, 1, "hello %s", ("world",), None)
+    with bind(job_id="job_json01", node="extract_scope"):
+        CorrelationFilter().filter(record)
+    payload = json.loads(JsonFormatter().format(record))
+    assert payload["event"] == "hello world"
+    assert payload["job_id"] == "job_json01"
+    assert payload["node"] == "extract_scope"
+    assert "candidate" not in payload  # unset fields are omitted
