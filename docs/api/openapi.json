@@ -2027,17 +2027,6 @@
               "application/problem+json": {}
             },
             "description": "Problem"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
           }
         },
         "summary": "Download an artifact (or one frame of a frame sequence)",
@@ -2189,17 +2178,6 @@
               "application/problem+json": {}
             },
             "description": "Problem"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
           }
         },
         "summary": "Create a repair job",
@@ -2246,17 +2224,6 @@
             "description": "Problem"
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
-          },
-          "501": {
             "content": {
               "application/json": {
                 "schema": {
@@ -2332,17 +2299,6 @@
               "application/problem+json": {}
             },
             "description": "Problem"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
           }
         },
         "summary": "Cancel a non-terminal job",
@@ -2393,17 +2349,6 @@
             "description": "Problem"
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
-          },
-          "501": {
             "content": {
               "application/json": {
                 "schema": {
@@ -2480,17 +2425,6 @@
             "description": "Problem"
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
-          },
-          "501": {
             "content": {
               "application/json": {
                 "schema": {
@@ -2577,17 +2511,6 @@
               "application/problem+json": {}
             },
             "description": "Problem"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
           }
         },
         "summary": "Record the animator's choice",
@@ -2654,17 +2577,6 @@
               "application/problem+json": {}
             },
             "description": "Problem"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
           }
         },
         "summary": "Deterministic defect report (409 NOT_READY until analysis completes)",
@@ -2722,17 +2634,6 @@
             "description": "Problem"
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
-          },
-          "501": {
             "content": {
               "application/json": {
                 "schema": {
@@ -2811,17 +2712,6 @@
             "description": "Problem"
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
-          },
-          "501": {
             "content": {
               "application/json": {
                 "schema": {

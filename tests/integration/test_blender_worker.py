@@ -479,3 +479,70 @@ def test_render_original_uses_the_same_cameras(
     original = Samples.from_worker(1, extracted.all_bones)
     rendered = Samples.from_worker(1, result.all_bones)
     assert np.abs(rendered.heads["foot.L"] - original.heads["foot.L"]).max() < 1e-6
+
+
+# ------------------------------------------------------------------ Phase 3: full pipeline
+
+
+async def test_full_job_through_api_with_real_blender(tmp_path: Path) -> None:
+    """Upload the real fixture, run the whole repair DAG through LocalJobRunner, choose B,
+    and download the exported .blend."""
+    import httpx
+
+    from kinesis.jobs.service import JobService, ServiceConfig
+    from kinesis.main import create_app
+    from kinesis.providers.null import NullProvider
+    from kinesis.storage.sqlite import Database, SqliteArtifactStore, SqliteJobStore
+
+    db = Database(tmp_path / "k.db")
+    service = JobService(
+        SqliteJobStore(db),
+        SqliteArtifactStore(db, tmp_path / "jobs"),
+        LocalJobRunner(_blender()),
+        NullProvider(),
+        ServiceConfig(data_dir=tmp_path),
+    )
+    transport = httpx.ASGITransport(app=create_app(service))
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        upload = await client.post(
+            "/v1/scenes",
+            files={
+                "file": ("fixture.blend", FIXTURE_BLEND.read_bytes(), "application/octet-stream")
+            },
+        )
+        assert upload.status_code == 201, upload.text
+        body = {
+            "selection": {
+                "scene_id": upload.json()["scene_id"],
+                "armature": "Rig",
+                "target_bones": ["foot.L"],
+                "temporal": {"frame_start": 45, "frame_end": 90},
+            }
+        }
+        created = await client.post("/v1/jobs", json=body, headers={"Idempotency-Key": "real-0001"})
+        assert created.status_code == 202, created.text
+        await service.wait_idle()
+        job = (await client.get(f"/v1/jobs/{created.json()['job_id']}")).json()
+        assert job["status"] == "AWAITING_DECISION", job.get("error")
+        assert (
+            9.5
+            <= job["defect"]["intervals"][job["defect"]["worst_interval_index"]][
+                "planted_displacement_cm"
+            ]
+            <= 10.5
+        )
+        by_label = {c["label"]: c for c in job["candidates"]}
+        assert by_label["A"]["metrics"]["slip_reduction_pct"] >= 95
+        assert by_label["B"]["metrics"]["slip_reduction_pct"] >= 70
+        assert job["evaluation"]["recommended"] == "B"
+        frames = next(a for a in job["original_artifacts"] if a["kind"] == "PREVIEW_FRAMES")
+        jpeg = await client.get(f"{frames['uri']}?frame=0")
+        assert jpeg.content.startswith(b"\xff\xd8")
+
+        decided = await client.post(f"/v1/jobs/{job['job_id']}/decision", json={"choice": "B"})
+        assert decided.status_code == 202
+        await service.wait_idle()
+        done = (await client.get(f"/v1/jobs/{job['job_id']}")).json()
+        assert done["status"] == "COMPLETED", done.get("error")
+        output = await client.get(done["output"]["uri"])
+        assert output.content.startswith(b"BLENDER")

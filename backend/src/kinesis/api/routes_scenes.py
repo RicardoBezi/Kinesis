@@ -2,16 +2,26 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Annotated
 
-from fastapi import APIRouter, File, Path, UploadFile, status
+from fastapi import APIRouter, Depends, File, Path, UploadFile, status
 
-from kinesis.api.errors import not_implemented, problem_responses
+from kinesis.api.deps import get_service
+from kinesis.api.errors import problem_responses
+from kinesis.jobs.service import JobService
 from kinesis.schemas import SceneRef
 
 router = APIRouter(prefix="/v1/scenes", tags=["scenes"])
 
 SceneIdPath = Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9_-]{5,63}$")]
+Service = Annotated[JobService, Depends(get_service)]
+CHUNK = 1 << 20
+
+
+async def _chunks(file: UploadFile) -> AsyncIterator[bytes]:
+    while chunk := await file.read(CHUNK):
+        yield chunk
 
 
 @router.post(
@@ -27,8 +37,8 @@ SceneIdPath = Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9_-]{5,63}$")]
         "auto-run scripts disabled."
     ),
 )
-async def upload_scene(file: Annotated[UploadFile, File()]) -> SceneRef:
-    raise not_implemented("Phase 3")
+async def upload_scene(file: Annotated[UploadFile, File()], service: Service) -> SceneRef:
+    return await service.upload_scene(_chunks(file))
 
 
 @router.get(
@@ -37,5 +47,5 @@ async def upload_scene(file: Annotated[UploadFile, File()]) -> SceneRef:
     responses=problem_responses(404, 501),
     summary="Get an uploaded scene's inventory",
 )
-async def get_scene(scene_id: SceneIdPath) -> SceneRef:
-    raise not_implemented("Phase 3")
+async def get_scene(scene_id: SceneIdPath, service: Service) -> SceneRef:
+    return await service.get_scene(scene_id)

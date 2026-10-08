@@ -1,12 +1,14 @@
-"""Repair job endpoints (docs/API.md). Phase 0 freezes the contracts; handlers return 501."""
+"""Repair job endpoints (docs/API.md)."""
 
 from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Header, Path, Query, status
+from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 
-from kinesis.api.errors import not_implemented, problem_responses
+from kinesis.api.deps import get_service
+from kinesis.api.errors import problem_responses
+from kinesis.jobs.service import JobService
 from kinesis.schemas import (
     CandidateMetrics,
     CreateRepairJobRequest,
@@ -23,6 +25,7 @@ router = APIRouter(prefix="/v1/jobs", tags=["jobs"])
 
 JobIdPath = Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9_-]{5,63}$")]
 CandidateIdPath = Annotated[str, Path(pattern=r"^[0-9a-f]{16}$")]
+Service = Annotated[JobService, Depends(get_service)]
 
 
 @router.post(
@@ -31,7 +34,7 @@ CandidateIdPath = Annotated[str, Path(pattern=r"^[0-9a-f]{16}$")]
     response_model=RepairJob,
     responses={
         200: {"model": RepairJob, "description": "Idempotent replay: the existing job"},
-        **problem_responses(404, 409, 422, 501),
+        **problem_responses(404, 409, 422),
     },
     summary="Create a repair job",
     description=(
@@ -44,81 +47,87 @@ CandidateIdPath = Annotated[str, Path(pattern=r"^[0-9a-f]{16}$")]
 async def create_job(
     body: CreateRepairJobRequest,
     idempotency_key: Annotated[IdempotencyKey, Header(alias="Idempotency-Key")],
+    response: Response,
+    service: Service,
 ) -> RepairJob:
-    raise not_implemented("Phase 3")
+    job, created = await service.create_job(body, idempotency_key)
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return job
 
 
 @router.get(
     "/{job_id}",
     response_model=RepairJob,
-    responses=problem_responses(404, 501),
+    responses=problem_responses(404),
     summary="Get a job",
 )
-async def get_job(job_id: JobIdPath) -> RepairJob:
-    raise not_implemented("Phase 3")
+async def get_job(job_id: JobIdPath, service: Service) -> RepairJob:
+    return await service.get_job(job_id)
 
 
 @router.get(
     "/{job_id}/events",
     response_model=EventPage,
-    responses=problem_responses(404, 501),
+    responses=problem_responses(404),
     summary="Poll job events after a sequence number",
 )
 async def list_events(
     job_id: JobIdPath,
+    service: Service,
     after_seq: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> EventPage:
-    raise not_implemented("Phase 3")
+    return await service.events(job_id, after_seq, limit)
 
 
 @router.get(
     "/{job_id}/defect",
     response_model=DefectReport,
-    responses=problem_responses(404, 409, 501),
+    responses=problem_responses(404, 409),
     summary="Deterministic defect report (409 NOT_READY until analysis completes)",
 )
-async def get_defect(job_id: JobIdPath) -> DefectReport:
-    raise not_implemented("Phase 3")
+async def get_defect(job_id: JobIdPath, service: Service) -> DefectReport:
+    return await service.defect(job_id)
 
 
 @router.get(
     "/{job_id}/candidates",
     response_model=list[RepairCandidate],
-    responses=problem_responses(404, 501),
+    responses=problem_responses(404),
     summary="List repair candidates",
 )
-async def list_candidates(job_id: JobIdPath) -> list[RepairCandidate]:
-    raise not_implemented("Phase 2")
+async def list_candidates(job_id: JobIdPath, service: Service) -> list[RepairCandidate]:
+    return await service.candidates(job_id)
 
 
 @router.get(
     "/{job_id}/candidates/{candidate_id}/metrics",
     response_model=CandidateMetrics,
-    responses=problem_responses(404, 409, 501),
+    responses=problem_responses(404, 409),
     summary="Objective metrics for one candidate",
 )
 async def get_candidate_metrics(
-    job_id: JobIdPath, candidate_id: CandidateIdPath
+    job_id: JobIdPath, candidate_id: CandidateIdPath, service: Service
 ) -> CandidateMetrics:
-    raise not_implemented("Phase 2")
+    return await service.metrics(job_id, candidate_id)
 
 
 @router.get(
     "/{job_id}/evaluation",
     response_model=EvaluationReport,
-    responses=problem_responses(404, 409, 501),
+    responses=problem_responses(404, 409),
     summary="Combined objective + model evaluation",
 )
-async def get_evaluation(job_id: JobIdPath) -> EvaluationReport:
-    raise not_implemented("Phase 4")
+async def get_evaluation(job_id: JobIdPath, service: Service) -> EvaluationReport:
+    return await service.evaluation(job_id)
 
 
 @router.post(
     "/{job_id}/decision",
     status_code=status.HTTP_202_ACCEPTED,
     response_model=RepairJob,
-    responses=problem_responses(404, 409, 422, 501),
+    responses=problem_responses(404, 409, 422),
     summary="Record the animator's choice",
     description=(
         "Allowed only in AWAITING_DECISION (otherwise 409 INVALID_STATE). Choosing A or B "
@@ -126,15 +135,15 @@ async def get_evaluation(job_id: JobIdPath) -> EvaluationReport:
         "REJECTED. Choosing a FAILED candidate returns 422."
     ),
 )
-async def post_decision(job_id: JobIdPath, body: DecisionRequest) -> RepairJob:
-    raise not_implemented("Phase 5")
+async def post_decision(job_id: JobIdPath, body: DecisionRequest, service: Service) -> RepairJob:
+    return await service.decide(job_id, body)
 
 
 @router.post(
     "/{job_id}/cancel",
     response_model=RepairJob,
-    responses=problem_responses(404, 409, 501),
+    responses=problem_responses(404, 409),
     summary="Cancel a non-terminal job",
 )
-async def cancel_job(job_id: JobIdPath) -> RepairJob:
-    raise not_implemented("Phase 3")
+async def cancel_job(job_id: JobIdPath, service: Service) -> RepairJob:
+    return await service.cancel(job_id)

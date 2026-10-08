@@ -1,7 +1,7 @@
 """API contract tests for Phase 0: routes exist, errors are Problems, OpenAPI is current.
 
 Behavioural API tests (happy path, invalid bone or range, idempotency, decision state) are in
-tests/integration/test_api_jobs.py. They are activated in Phase 3, when the handlers exist.
+tests/integration/test_api_jobs.py.
 """
 
 from __future__ import annotations
@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -40,9 +41,9 @@ REQUIRED_SCHEMAS = {
 }
 
 
-@pytest.fixture(scope="module")
-def client() -> TestClient:
-    return TestClient(create_app())
+@pytest.fixture
+def client(make_service: Any) -> TestClient:
+    return TestClient(create_app(make_service()))
 
 
 def test_health(client: TestClient) -> None:
@@ -68,32 +69,41 @@ VALID_JOB = {
 
 
 @pytest.mark.parametrize(
-    ("method", "path", "kwargs"),
+    ("method", "path", "kwargs", "code"),
     [
-        ("get", "/v1/jobs/job_000001", {}),
-        ("get", "/v1/jobs/job_000001/events?after_seq=3", {}),
-        ("get", "/v1/jobs/job_000001/defect", {}),
-        ("get", "/v1/jobs/job_000001/candidates", {}),
-        ("get", "/v1/jobs/job_000001/candidates/0123456789abcdef/metrics", {}),
-        ("get", "/v1/jobs/job_000001/evaluation", {}),
-        ("post", "/v1/jobs/job_000001/decision", {"json": {"choice": "A"}}),
-        ("post", "/v1/jobs/job_000001/cancel", {}),
-        ("post", "/v1/jobs", {"json": VALID_JOB, "headers": {"Idempotency-Key": "key-0001"}}),
-        ("get", "/v1/scenes/scn_fixture01", {}),
-        ("get", "/v1/artifacts/art_000001?frame=3", {}),
-        ("get", "/v1/stats/product", {}),
-        ("get", "/v1/health/providers", {}),
+        ("get", "/v1/jobs/job_000001", {}, "JOB_NOT_FOUND"),
+        ("get", "/v1/jobs/job_000001/events?after_seq=3", {}, "JOB_NOT_FOUND"),
+        ("get", "/v1/jobs/job_000001/defect", {}, "JOB_NOT_FOUND"),
+        ("get", "/v1/jobs/job_000001/candidates", {}, "JOB_NOT_FOUND"),
+        ("get", "/v1/jobs/job_000001/candidates/0123456789abcdef/metrics", {}, "JOB_NOT_FOUND"),
+        ("get", "/v1/jobs/job_000001/evaluation", {}, "JOB_NOT_FOUND"),
+        ("post", "/v1/jobs/job_000001/decision", {"json": {"choice": "A"}}, "JOB_NOT_FOUND"),
+        ("post", "/v1/jobs/job_000001/cancel", {}, "JOB_NOT_FOUND"),
+        (
+            "post",
+            "/v1/jobs",
+            {"json": VALID_JOB, "headers": {"Idempotency-Key": "key-0001"}},
+            "SCENE_NOT_FOUND",
+        ),
+        ("get", "/v1/scenes/scn_fixture01", {}, "SCENE_NOT_FOUND"),
+        ("get", "/v1/artifacts/art_000001?frame=3", {}, "ARTIFACT_NOT_FOUND"),
     ],
 )
-def test_stubs_return_problem_501(
-    client: TestClient, method: str, path: str, kwargs: dict[str, object]
+def test_unknown_resources_are_404_problems(
+    client: TestClient, method: str, path: str, kwargs: dict[str, object], code: str
 ) -> None:
     r = getattr(client, method)(path, **kwargs)
+    assert r.status_code == 404, r.text
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.json()["code"] == code
+
+
+@pytest.mark.parametrize("path", ["/v1/stats/product", "/v1/health/providers"])
+def test_remaining_stubs_return_problem_501(client: TestClient, path: str) -> None:
+    r = client.get(path)
     assert r.status_code == 501, r.text
     assert r.headers["content-type"].startswith("application/problem+json")
-    body = r.json()
-    assert body["code"] == "NOT_IMPLEMENTED"
-    assert body["status"] == 501
+    assert r.json()["code"] == "NOT_IMPLEMENTED"
 
 
 @pytest.mark.parametrize(

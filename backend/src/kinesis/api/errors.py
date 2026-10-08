@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from kinesis.errors import KinesisError
+from kinesis.jobs.service import RequestError
 from kinesis.schemas import ErrorCode, Problem
+
+log = logging.getLogger("kinesis.api")
 
 PROBLEM_MEDIA_TYPE = "application/problem+json"
 
@@ -74,5 +79,30 @@ def install_error_handlers(app: FastAPI) -> None:
                 code=ErrorCode.VALIDATION_ERROR,
                 instance=request.url.path,
                 errors=errors,
+            )
+        )
+
+    @app.exception_handler(RequestError)
+    async def _request_error(request: Request, exc: RequestError) -> JSONResponse:
+        return problem_response(
+            Problem(
+                title=exc.title,
+                status=exc.status,
+                code=exc.code,
+                detail=exc.detail,
+                instance=request.url.path,
+            )
+        )
+
+    @app.exception_handler(KinesisError)
+    async def _pipeline_error(request: Request, exc: KinesisError) -> JSONResponse:
+        log.error("api.unhandled_pipeline_error", extra={"code": exc.code.value})
+        return problem_response(
+            Problem(
+                title="Internal error",
+                status=503 if exc.retryable else 500,
+                code=exc.code,
+                detail=exc.message[:500],
+                instance=request.url.path,
             )
         )
