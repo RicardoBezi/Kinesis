@@ -95,3 +95,18 @@ compose.desktop {
         }
     }
 }
+
+// Off-screen render of the review screen for a live job (see src/test/.../Screenshot.kt).
+tasks.register<JavaExec>("screenshot") {
+    group = "verification"
+    description = "Render the review screen of a running job to a PNG"
+    dependsOn("testClasses")
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.kinesis.client.ScreenshotKt")
+    args = listOf(
+        project.findProperty("job")?.toString() ?: error("-Pjob=<job_id> is required"),
+        project.findProperty("out")?.toString() ?: layout.buildDirectory.file("screenshots/review.png").get().asFile.path,
+        project.findProperty("api")?.toString() ?: "http://127.0.0.1:8000",
+        project.findProperty("frame")?.toString() ?: "30",
+    )
+}
