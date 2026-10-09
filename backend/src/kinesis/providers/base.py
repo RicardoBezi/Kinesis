@@ -69,6 +69,7 @@ class ProviderResult[T]:
     usage: TokenUsage = field(default_factory=TokenUsage)
     latency_ms: int = 0
     reasons: tuple[str, ...] = ()
+    cost_usd: float | None = None  # from catalog prices; None until they are known (C9)
 
     @property
     def ok(self) -> bool:

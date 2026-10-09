@@ -32,12 +32,17 @@ from kinesis.evaluation.metrics import (
 )
 from kinesis.jobs.specs import candidate_apply_spec, original_render_spec
 from kinesis.jobs.worker_io import run_worker, spec_paths
-from kinesis.observability.metrics import PLAN_FALLBACKS
+from kinesis.observability.metrics import (
+    MODEL_CALLS,
+    MODEL_COST_USD,
+    MODEL_TOKENS,
+    PLAN_FALLBACKS,
+)
 from kinesis.orchestration.cache import cache_key
 from kinesis.orchestration.dag import JoinPolicy, Node, RetryPolicy
 from kinesis.orchestration.engine import Codec, NodeEvent, NodeEventKind, SkipNode
 from kinesis.orchestration.retry import call_with_retry
-from kinesis.providers.base import EvaluationRequest, PlanRequest, ResultStatus
+from kinesis.providers.base import EvaluationRequest, PlanRequest, ProviderResult, ResultStatus
 from kinesis.repair.candidates import CandidateResult, LegChain, generate_candidate, repair_input
 from kinesis.repair.plan_validation import default_plan
 from kinesis.repair.render_plan import crop_render_spec
@@ -709,6 +714,7 @@ async def _plan(ctx: JobContext, analysis: Analysis, scene_range: tuple[int, int
             data={"code": exc.code.value},
         )
         return default_plan(job.selection, scope, reason)
+    record_model_call("plan", result)
     plan = result.value or default_plan(job.selection, scope, "provider returned no plan")
     if result.status is ResultStatus.INVALID:
         PLAN_FALLBACKS.labels(ErrorCode.PLAN_INVALID.value).inc()
@@ -749,7 +755,32 @@ async def _evaluate_one(
     except ProviderError as exc:
         log.warning("evaluate.provider_failed", extra={"error": describe(exc)})
         return None
+    record_model_call("evaluate", result)
+    if not result.ok:
+        log.warning("evaluate.invalid_judgement", extra={"reasons": list(result.reasons)[:5]})
     return result.value if result.ok else None
+
+
+def record_model_call(task: str, result: ProviderResult[Any]) -> None:
+    """Prometheus counters and one structured log line per model call (token and cost)."""
+    model = result.model_id or "unknown"
+    MODEL_CALLS.labels(task, model, result.status.value).inc()
+    MODEL_TOKENS.labels(model, "prompt").inc(result.usage.prompt_tokens)
+    MODEL_TOKENS.labels(model, "completion").inc(result.usage.completion_tokens)
+    if result.cost_usd is not None:
+        MODEL_COST_USD.labels(model).inc(result.cost_usd)
+    log.info(
+        "model.call",
+        extra={
+            "task": task,
+            "model": model,
+            "status": result.status.value,
+            "prompt_tokens": result.usage.prompt_tokens,
+            "completion_tokens": result.usage.completion_tokens,
+            "cost_estimate_usd": result.cost_usd,
+            "latency_ms": result.latency_ms,
+        },
+    )
 
 
 def _sample(paths: Sequence[Path], count: int) -> tuple[int, ...]:

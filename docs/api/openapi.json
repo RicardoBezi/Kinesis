@@ -2058,6 +2058,7 @@
     },
     "/v1/health/providers": {
       "get": {
+        "description": "Checks each dependency once, in parallel. `status` is `ok` only when every component is healthy; a failing optional component (Redis, the model provider) makes it `degraded`, because Kinesis keeps working without them.",
         "operationId": "provider_health_v1_health_providers_get",
         "responses": {
           "200": {
@@ -2069,28 +2070,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              },
-              "application/problem+json": {}
-            },
-            "description": "Problem"
           }
         },
         "summary": "Model provider, Redis and Blender reachability",

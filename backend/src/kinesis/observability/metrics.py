@@ -17,4 +17,21 @@ PLAN_FALLBACKS = Counter(
     "kinesis_plan_fallbacks_total", "Plans that fell back to the deterministic presets", ["code"]
 )
 
-__all__ = ["JOBS_FINISHED", "NODE_SECONDS", "PLAN_FALLBACKS"]
+MODEL_CALLS = Counter(
+    "kinesis_model_calls_total", "Model provider calls by outcome", ["task", "model", "status"]
+)
+MODEL_TOKENS = Counter(
+    "kinesis_model_tokens_total", "Tokens used by model calls", ["model", "kind"]
+)
+MODEL_COST_USD = Counter(
+    "kinesis_model_cost_usd_total", "Estimated model cost from catalog prices", ["model"]
+)
+
+__all__ = [
+    "JOBS_FINISHED",
+    "MODEL_CALLS",
+    "MODEL_COST_USD",
+    "MODEL_TOKENS",
+    "NODE_SECONDS",
+    "PLAN_FALLBACKS",
+]

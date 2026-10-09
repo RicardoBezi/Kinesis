@@ -10,7 +10,7 @@ from fastapi import FastAPI
 
 from kinesis import __version__
 from kinesis.api import routes_artifacts, routes_health, routes_jobs, routes_scenes
-from kinesis.api.deps import ensure_service
+from kinesis.api.deps import ensure_service, verify_provider
 from kinesis.api.errors import install_error_handlers
 from kinesis.jobs.service import JobService
 from kinesis.observability.context import configure_logging
@@ -27,6 +27,7 @@ def create_app(service: JobService | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         configure_logging(get_settings().kinesis_log_level)
         svc = ensure_service(app)
+        await verify_provider(svc)
         recovered = await svc.recover()
         if recovered:
             log.warning("jobs.recovered_after_restart", extra={"count": recovered})

@@ -98,7 +98,15 @@ def test_unknown_resources_are_404_problems(
     assert r.json()["code"] == code
 
 
-@pytest.mark.parametrize("path", ["/v1/stats/product", "/v1/health/providers"])
+def test_provider_health_reports_every_component(client: TestClient) -> None:
+    r = client.get("/v1/health/providers")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert [c["name"] for c in body["components"]] == ["model_provider", "redis", "blender"]
+
+
+@pytest.mark.parametrize("path", ["/v1/stats/product"])
 def test_remaining_stubs_return_problem_501(client: TestClient, path: str) -> None:
     r = client.get(path)
     assert r.status_code == 501, r.text
