@@ -374,3 +374,17 @@ async def test_restart_marks_running_jobs_failed(make_service: Any) -> None:
     assert failed.status is JobStatus.FAILED
     assert failed.error is not None
     assert "restart" in failed.error.message
+
+
+async def test_original_and_candidates_share_one_crop_camera(make_service: Any) -> None:
+    """A/B fairness: every pane (and the vision model) sees the same camera."""
+    import json as _json
+
+    service = make_service()
+    job = await run_job(service)
+    job_dir = service.artifacts.job_dir(job.job_id)
+    renders = [
+        _json.loads((job_dir / "work" / f"{node}.spec.json").read_text(encoding="utf-8"))["render"]
+        for node in ("apply_a", "apply_b", "render_original")
+    ]
+    assert renders[0] == renders[1] == renders[2]

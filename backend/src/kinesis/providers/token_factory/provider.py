@@ -54,8 +54,10 @@ class TokenFactoryProvider:
         planner_model: str,
         vision_model: str,
         classifier_model: str | None = None,
+        prefer_nvidia_vision: bool = True,
     ) -> None:
         self.client = client
+        self.prefer_nvidia_vision = prefer_nvidia_vision
         self.planner_model = planner_model
         self.vision_model = vision_model
         self.classifier_model = classifier_model
@@ -204,6 +206,7 @@ class TokenFactoryProvider:
         for m in models.values():
             if m.price_in_per_m is not None and m.price_out_per_m is not None:
                 self.prices[m.id] = (m.price_in_per_m, m.price_out_per_m)
+        self._maybe_upgrade_vision(models)
         problems: list[str] = []
         planner: ModelInfo | None = models.get(self.planner_model)
         vision: ModelInfo | None = models.get(self.vision_model)
@@ -223,6 +226,26 @@ class TokenFactoryProvider:
         if self.classifier_model and self.classifier_model not in models:
             problems.append(f"classifier model {self.classifier_model!r} is not in the catalog")
         return problems
+
+    def _maybe_upgrade_vision(self, models: dict[str, ModelInfo]) -> None:
+        """NVIDIA VL upgrade path (owner decision 2026-10-09): if the catalog ever lists an
+        image-capable ``nvidia/*`` model, use it for visual evaluation (VL-named ids first)."""
+        if not self.prefer_nvidia_vision or self.vision_model.lower().startswith("nvidia/"):
+            return
+        candidates = sorted(
+            (
+                m.id
+                for m in models.values()
+                if m.id.lower().startswith("nvidia/") and m.accepts_images
+            ),
+            key=lambda i: ("vl" not in i.lower(), i),
+        )
+        if candidates:
+            log.warning(
+                "provider.vision_model_upgraded",
+                extra={"from": self.vision_model, "to": candidates[0]},
+            )
+            self.vision_model = candidates[0]
 
     async def health_check(self) -> ProviderHealth:
         try:
