@@ -39,3 +39,34 @@ Build `TokenFactoryClient` on `httpx.AsyncClient`:
 - **Measured calls:**
   - planner: about 0.8k prompt and 0.8–1.2k completion tokens, 4–6 s, about $0.001;
   - vision with 10 frames: about 1.1k prompt tokens, under 1 s, about $0.0008.
+
+## Vision-model bake-off (2026-10-09)
+
+The owner asked for a bake-off before settling the vision model, because no NVIDIA vision-language model is available on Token Factory. The full results are in `docs/benchmarks/vlm_bakeoff.md`, produced by `uv run task vlm-bakeoff`.
+
+**Design**
+- Four candidates were tested on real fixture previews, with the same camera for every pane.
+- Every condition has a known answer:
+  - Original vs A: the candidate should be preferred;
+  - Original vs B: the candidate should be preferred;
+  - *swapped*, with A presented as the original: the candidate must not be preferred.
+- Frames were shown in two styles, plain and annotated.
+
+**Cost:** $0.17 for 62 calls. An earlier run of about $0.13 lost its results to a cleanup crash that has since been fixed.
+
+**Results**
+
+| Model | Wrong answers | Valid JSON | Cost per review | Latency |
+|---|---|---|---|---|
+| `zai-org/GLM-5.3-Flash` | none | 100% | about $0.001 (cheapest) | about 9.7 s |
+| `Qwen/Qwen3.8-27B` | none | 100% | about $0.004–0.006 | |
+| `deepseek-ai/DeepSeek-V4.1-Flash` | none | 83–89%: empty responses | | |
+| `openbmb/MiniCPM-V-4_5` (previous default) | 5, all on Original vs B | | | about 1.9 s (fastest) |
+
+MiniCPM consistently judged that B (a partial fix) was not better than the original.
+
+**Decision:** the vision default is now `zai-org/GLM-5.3-Flash`.
+- The evaluator's output budget is raised to 4096 tokens, because GLM reasons before it answers.
+- The two candidate reviews run concurrently, so a job waits about 10 s once rather than twice.
+- Plain frames are used; annotation made no difference for the winner.
+- The samples are small: 6–9 trials per row. A 1.00 score means "no miss observed", not a guarantee.

@@ -20,6 +20,7 @@ dev = [
   "fakeredis>=2.26",
   "httpx2>=2.13",  # starlette TestClient transport (httpx is deprecated there)
   "cryptography>=43",  # Nebius runner auth tests (the runtime gets it from the `nebius` extra)
+  "pillow>=11",  # benchmark tooling only: annotated frames for the vision-model bake-off
 ]
 
 [build-system]
@@ -58,6 +59,7 @@ known-first-party = ["kinesis", "tasks"]
 [tool.ruff.lint.per-file-ignores]
 "scripts/tasks.py" = ["S603", "S607"]  # fixed-argv subprocess calls are the point of this file
 "tests/**" = ["S105", "S106"]
+"scripts/vlm_bakeoff.py" = ["E501"]  # report tables and trial records read better unwrapped
 
 # ---------------------------------------------------------------- mypy
 [tool.mypy]

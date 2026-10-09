@@ -823,10 +823,9 @@ async def _evaluate(
     elif original is None or not original.crop_frames:
         evaluator_status = EvaluatorStatus.DEGRADED  # nothing to compare against
     else:
-        for s in scored:
-            value = await _evaluate_one(ctx, s, original)
-            if value is not None:
-                visual.append(value)
+        # One review per candidate, concurrently: the job waits for the slowest, not the sum.
+        reviews = await asyncio.gather(*(_evaluate_one(ctx, s, original) for s in scored))
+        visual = [v for v in reviews if v is not None]
         ok = len(visual) == len(scored)
         evaluator_status = EvaluatorStatus.OK if ok else EvaluatorStatus.DEGRADED
     rec = recommend(

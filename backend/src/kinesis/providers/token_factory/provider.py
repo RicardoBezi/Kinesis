@@ -41,7 +41,7 @@ from kinesis.schemas import ModelVisualJudgement, RepairPlan, TokenUsage, Visual
 log = logging.getLogger("kinesis.providers.token_factory")
 
 PLANNER_MAX_TOKENS = 4096  # Super spends most of its budget on reasoning (spike S4)
-EVALUATOR_MAX_TOKENS = 600
+EVALUATOR_MAX_TOKENS = 4096  # reasoning vision models (GLM, DeepSeek) think before answering
 
 
 class TokenFactoryProvider:
@@ -58,6 +58,7 @@ class TokenFactoryProvider:
     ) -> None:
         self.client = client
         self.prefer_nvidia_vision = prefer_nvidia_vision
+        self.evaluator_max_tokens = EVALUATOR_MAX_TOKENS  # raise for reasoning vision models
         self.planner_model = planner_model
         self.vision_model = vision_model
         self.classifier_model = classifier_model
@@ -140,7 +141,7 @@ class TokenFactoryProvider:
             self.vision_model,
             messages,
             response_format=response_format("visual_judgement", JUDGEMENT_SCHEMA),
-            max_tokens=EVALUATOR_MAX_TOKENS,
+            max_tokens=self.evaluator_max_tokens,
             temperature=0.0,
         )
         if chat.content is None:
@@ -158,6 +159,7 @@ class TokenFactoryProvider:
             performance_preservation=judgement.performance_preservation,
             instruction_adherence=judgement.instruction_adherence,
             notes=judgement.notes,
+            prefers_over_original=judgement.prefers_over_original,
             model_id=chat.model,
             usage=chat.usage,
             latency_ms=chat.latency_ms,

@@ -1934,6 +1934,17 @@
             "title": "Performance Preservation",
             "type": "integer"
           },
+          "prefers_over_original": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefers Over Original"
+          },
           "usage": {
             "$ref": "#/components/schemas/TokenUsage",
             "default": {

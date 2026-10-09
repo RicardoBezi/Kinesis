@@ -127,6 +127,7 @@ class MockProvider:
                 performance_preservation=judgement.performance_preservation,
                 instruction_adherence=judgement.instruction_adherence,
                 notes=judgement.notes,
+                prefers_over_original=judgement.prefers_over_original,
                 model_id=self.vision_model,
             ),
             model_id=self.vision_model,
