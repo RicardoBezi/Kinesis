@@ -209,8 +209,13 @@ class TokenFactoryProvider:
         vision: ModelInfo | None = models.get(self.vision_model)
         if planner is None:
             problems.append(f"planner model {self.planner_model!r} is not in the catalog")
-        elif planner.features and "structured_outputs" not in planner.features:
-            problems.append(f"planner model {self.planner_model!r} lacks structured_outputs")
+        elif not {"structured_outputs", "json_mode"} & planner.features:
+            # Not fatal: Nemotron Super is tagged only tools/reasoning yet honours strict
+            # json_schema (spike S4, live run 2026-10-08), and the plan gate validates anyway.
+            log.warning(
+                "provider.planner_structured_outputs_untagged",
+                extra={"model": self.planner_model},
+            )
         if vision is None:
             problems.append(f"vision model {self.vision_model!r} is not in the catalog")
         elif vision.input_modalities and not vision.accepts_images:

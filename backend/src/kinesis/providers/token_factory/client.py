@@ -57,6 +57,7 @@ class ModelInfo:
     features: frozenset[str] = frozenset()
     price_in_per_m: float | None = None  # USD per 1M prompt tokens
     price_out_per_m: float | None = None  # USD per 1M completion tokens
+    # The catalog quotes USD per *token* (e.g. "0.0000003" = $0.30 per 1M); see parse_model.
     raw: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
     @property
@@ -71,6 +72,11 @@ def _float(value: Any) -> float | None:
         return None
 
 
+def _per_million(value: Any) -> float | None:
+    per_token = _float(value)
+    return None if per_token is None else per_token * 1e6
+
+
 def parse_model(entry: dict[str, Any]) -> ModelInfo:
     """Read one ``/models?verbose=true`` entry. Unknown shapes degrade to an id-only record."""
     modality = str((entry.get("architecture") or {}).get("modality") or "")
@@ -81,8 +87,8 @@ def parse_model(entry: dict[str, Any]) -> ModelInfo:
         id=str(entry.get("id", "")),
         input_modalities=frozenset(p for p in inputs.split("+") if p),
         features=frozenset(str(f) for f in features if isinstance(f, str)),
-        price_in_per_m=_float(pricing.get("prompt")),
-        price_out_per_m=_float(pricing.get("completion")),
+        price_in_per_m=_per_million(pricing.get("prompt")),
+        price_out_per_m=_per_million(pricing.get("completion")),
         raw=entry,
     )
 

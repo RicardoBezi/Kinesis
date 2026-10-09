@@ -31,12 +31,12 @@ class FakeTokenFactory:
                             "id": PLANNER,
                             "architecture": {"modality": "text->text"},
                             "supported_features": ["structured_outputs"],
-                            "pricing": {"prompt": 0.3, "completion": 0.9},
+                            "pricing": {"prompt": "0.0000003", "completion": "0.0000009"},
                         },
                         {
                             "id": VISION,
                             "architecture": {"modality": "text+image->text"},
-                            "pricing": {"prompt": 0.66, "completion": 1.11},
+                            "pricing": {"prompt": "0.000000658", "completion": "0.00000111"},
                         },
                     ]
                 },

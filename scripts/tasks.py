@@ -175,12 +175,28 @@ def test_blender(args: list[str]) -> int:
     return run(pytest("-m", "blender", *args), env={"KINESIS_BLENDER_BIN": exe})
 
 
-@task("live-nebius-test", "Live Token Factory tests (requires NEBIUS_API_KEY); never in CI")
+def dotenv(path: Path = ROOT / ".env") -> dict[str, str]:
+    """KEY=VALUE pairs from .env (comments and blanks ignored). Values are never printed."""
+    values: dict[str, str] = {}
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.split(" #", 1)[0].strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                values[key.strip()] = value.strip()
+    return values
+
+
+@task(
+    "live-nebius-test", "Live Token Factory tests (needs NEBIUS_API_KEY, e.g. in .env); never in CI"
+)
 def live_nebius_test(args: list[str]) -> int:
-    if not os.environ.get("NEBIUS_API_KEY"):
-        print("NEBIUS_API_KEY is not set")
+    env = {k: v for k, v in dotenv().items() if v and k not in os.environ}
+    if not (os.environ.get("NEBIUS_API_KEY") or env.get("NEBIUS_API_KEY")):
+        print("NEBIUS_API_KEY is not set (environment or .env)")
         return 1
-    return run(pytest("-m", "live_nebius", *args), env={"KINESIS_LIVE_NEBIUS": "1"})
+    print("live run: about $0.002 per run on the default models")
+    return run(pytest("-m", "live_nebius", "-s", *args), env={**env, "KINESIS_LIVE_NEBIUS": "1"})
 
 
 # --------------------------------------------------------------------------- run / build

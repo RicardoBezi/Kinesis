@@ -48,14 +48,14 @@ CATALOG = {
         {
             "id": "nvidia/planner",
             "architecture": {"modality": "text->text"},
-            "supported_features": ["structured_outputs", "reasoning"],
-            "pricing": {"prompt": "0.30", "completion": "0.90"},
+            "supported_features": ["tools", "reasoning"],  # as the real catalog tags Super
+            "pricing": {"prompt": "0.0000003", "completion": "0.0000009"},  # USD per token
         },
         {
             "id": "openbmb/vision",
             "architecture": {"modality": "text+image->text"},
             "supported_features": ["structured_outputs"],
-            "pricing": {"prompt": 0.66, "completion": 1.11},
+            "pricing": {"prompt": "0.000000658", "completion": "0.00000111"},
         },
         {"id": "text/only", "architecture": {"modality": "text->text"}},
     ]
@@ -104,8 +104,9 @@ def test_strip_fences(raw: str, expected: str) -> None:
 def test_parse_model_reads_modality_features_and_prices() -> None:
     planner, vision, bare = (parse_model(m) for m in CATALOG["data"])
     assert not planner.accepts_images
-    assert "structured_outputs" in planner.features
-    assert (planner.price_in_per_m, planner.price_out_per_m) == (0.30, 0.90)
+    assert planner.price_in_per_m == pytest.approx(0.30)
+    assert planner.price_out_per_m == pytest.approx(0.90)
+    assert vision.price_in_per_m == pytest.approx(0.658)
     assert vision.accepts_images
     assert vision.input_modalities == {"text", "image"}
     assert bare.price_in_per_m is None
