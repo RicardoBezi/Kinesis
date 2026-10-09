@@ -50,9 +50,24 @@ class Settings(BaseSettings):
     kinesis_classifier_model: str | None = None
     kinesis_tf_timeout_s: float = Field(default=60, gt=0)
 
-    # nebius serverless (phase 6)
+    # nebius serverless (phase 6): see docs/PHASE6.md
     nebius_project_id: str | None = None
     nebius_job_image: str | None = None
+    nebius_runner_mode: str = "job"  # "job" (design A) | "session" (design B)
+    nebius_region: str = "us-central1"
+    nebius_platform: str = "cpu-d3"
+    nebius_preset: str = "4vcpu-16gb"
+    nebius_preemptible: bool = False
+    nebius_bucket: str | None = None
+    nebius_s3_endpoint: str = "https://storage.us-central1.nebius.cloud"
+    nebius_s3_access_key_id: str | None = None
+    nebius_s3_secret_access_key: SecretStr | None = None
+    nebius_service_account_id: str | None = None
+    nebius_auth_key_id: str | None = None
+    nebius_auth_pem: Path | None = None  # e.g. C:/Users/<you>/.nebius/kinesis-runner.pem
+    nebius_watchdog_s: float = Field(default=900, gt=0)
+    nebius_budget_usd: float = Field(default=5.0, ge=0)
+    nebius_price_per_hour_usd: float | None = None
 
     @property
     def jobs_root(self) -> Path:

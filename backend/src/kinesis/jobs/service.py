@@ -181,6 +181,8 @@ class JobService:
                 raise RequestError(
                     422, ErrorCode.FILE_INVALID, "Scene could not be inspected", exc.message[:500]
                 ) from exc
+            finally:
+                await self._release_runner(scene_dir)  # e.g. end a Nebius session
         except BaseException:
             shutil.rmtree(scene_dir, ignore_errors=True)
             raise
@@ -307,11 +309,21 @@ class JobService:
             result = await runner.run(nodes)
             self._observe(result)
             await self._finalize(ctx, result)
+            await self._release_runner(ctx.job_dir)
         except asyncio.CancelledError:
             raise  # cancel() owns the CANCELLED transition
         except Exception as exc:
             log.exception("job.crashed", extra={"job_id": job_id})
             await self._fail(ctx, ErrorInfo(code=ErrorCode.INTERNAL, message=str(exc)[:2000]))
+
+    async def _release_runner(self, job_dir: Path) -> None:
+        """Runners that hold per-job resources (the Nebius session runner) release them here."""
+        close = getattr(self.runner, "close", None)
+        if close is not None:
+            try:
+                await close(job_dir)
+            except Exception:
+                log.exception("runner.close_failed", extra={"job_dir": job_dir.name})
 
     async def _fail(self, ctx: JobContext, error: ErrorInfo) -> None:
         await ctx.mutate(lambda j: j.model_copy(update={"error": error}))
@@ -428,6 +440,7 @@ class JobService:
             ).run([node])
         except asyncio.CancelledError:
             raise
+        await self._release_runner(ctx.job_dir)
         outcome = result.outcomes["apply_selected"]
         if outcome.status is NodeStatus.SUCCEEDED:
             await self._transition(job.job_id, JobStatus.COMPLETED, "repair applied")

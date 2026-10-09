@@ -66,5 +66,5 @@ def test_runner_selection_from_settings() -> None:
     container = build_runner(Settings(kinesis_job_runner=RunnerKind.CONTAINER))
     assert isinstance(container, ContainerJobRunner)
     assert isinstance(build_runner(Settings(kinesis_job_runner=RunnerKind.LOCAL)), LocalJobRunner)
-    with pytest.raises(ValueError, match="not implemented"):
+    with pytest.raises(ValueError, match="NEBIUS_PROJECT_ID"):  # needs its configuration
         build_runner(Settings(kinesis_job_runner=RunnerKind.NEBIUS))

@@ -56,12 +56,14 @@ def load_ai_response(name: str) -> dict[str, Any]:
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Live tests are double-gated: the marker must be selected AND the env flag must be 1."""
-    if os.environ.get("KINESIS_LIVE_NEBIUS") == "1":
-        return
-    skip = pytest.mark.skip(reason="KINESIS_LIVE_NEBIUS != 1")
-    for item in items:
-        if "live_nebius" in item.keywords:
-            item.add_marker(skip)
+    gates = {"live_nebius": "KINESIS_LIVE_NEBIUS", "live_nebius_jobs": "KINESIS_LIVE_NEBIUS_JOBS"}
+    for marker, env in gates.items():
+        if os.environ.get(env) == "1":
+            continue
+        skip = pytest.mark.skip(reason=f"{env} != 1")
+        for item in items:
+            if marker in item.keywords:
+                item.add_marker(skip)
 
 
 # ---------------------------------------------------------------- Phase 3: service harness

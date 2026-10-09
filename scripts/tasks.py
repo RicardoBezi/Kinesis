@@ -192,6 +192,18 @@ def test_container(args: list[str]) -> int:
     return run(pytest("-m", "container", *args), env=env)
 
 
+@task(
+    "live-nebius-jobs-test",
+    "Live Nebius Serverless Jobs test (COSTS MONEY; needs the NEBIUS_* settings); never in CI",
+)
+def live_nebius_jobs_test(args: list[str]) -> int:
+    env = {k: v for k, v in dotenv().items() if v and k not in os.environ}
+    print("live run on Nebius Serverless Jobs: billed compute, capped by NEBIUS_BUDGET_USD")
+    return run(
+        pytest("-m", "live_nebius_jobs", "-s", *args), env={**env, "KINESIS_LIVE_NEBIUS_JOBS": "1"}
+    )
+
+
 def dotenv(path: Path = ROOT / ".env") -> dict[str, str]:
     """KEY=VALUE pairs from .env (comments and blanks ignored). Values are never printed."""
     values: dict[str, str] = {}
