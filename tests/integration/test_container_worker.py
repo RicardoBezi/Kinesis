@@ -49,8 +49,8 @@ pytestmark = [
 def _dump_logs(root: Path) -> None:
     """Worker logs (docker's own errors included) are the only evidence when a run fails."""
     for log in sorted(root.rglob("*.log")):
-        print(f"--- {log.relative_to(root)}
-{log.read_text(errors='replace')[-3000:]}")
+        print(f"--- {log.relative_to(root)}")
+        print(log.read_text(errors="replace")[-3000:])
 
 
 async def test_container_job_matches_golden_results(tmp_path: Path) -> None:
