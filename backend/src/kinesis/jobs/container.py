@@ -18,10 +18,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from kinesis.errors import WorkerCrashed
 from kinesis.jobs.local import AbortHook, LocalJobRunner
-from kinesis.jobs.runner import WorkerInvocation, assert_inside
+from kinesis.jobs.runner import WorkerInvocation, WorkerOutcome, assert_inside
 
 DEFAULT_IMAGE = "kinesis-worker:4.5.14"
+DOCKER_RUN_ERRORS = (125, 126, 127)
 
 
 class ContainerJobRunner(LocalJobRunner):
@@ -63,6 +65,20 @@ class ContainerJobRunner(LocalJobRunner):
             await proc.wait()
 
         return self.container_argv(invocation, container), remove
+
+    async def run(self, invocation: WorkerInvocation) -> WorkerOutcome:
+        try:
+            return await super().run(invocation)
+        except WorkerCrashed as exc:
+            # 125-127 mean `docker run` itself failed (daemon, image, mount or flag error), so
+            # Blender never started. Docker's one-line reason is safe and essential to surface.
+            if not any(f"exited with {code};" in exc.message for code in DOCKER_RUN_ERRORS):
+                raise
+            log = invocation.job_dir / Path(invocation.spec_relpath).with_suffix("").with_suffix(
+                ".log"
+            )
+            reason = log.read_text(errors="replace").strip()[-400:] if log.exists() else ""
+            raise WorkerCrashed(f"{exc.message}: docker: {reason}", node=exc.node) from exc
 
     async def health_check(self) -> tuple[bool, str]:
         try:

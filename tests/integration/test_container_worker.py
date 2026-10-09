@@ -18,8 +18,10 @@ import pytest
 
 from kinesis.jobs.container import DEFAULT_IMAGE, ContainerJobRunner
 from kinesis.jobs.service import JobService, ServiceConfig
+from kinesis.jobs.worker_io import run_worker, spec_paths
 from kinesis.providers.null import NullProvider
 from kinesis.schemas import CandidateLabel, DecisionChoice, DecisionRequest, JobStatus
+from kinesis.schemas.worker import InspectResult, InspectSpec, WorkerCommand
 from kinesis.storage.sqlite import Database, SqliteArtifactStore, SqliteJobStore
 
 REPO = Path(__file__).resolve().parents[2]
@@ -65,6 +67,15 @@ async def test_container_job_matches_golden_results(tmp_path: Path) -> None:
         ServiceConfig(data_dir=tmp_path),
     )
     assert (await service.runner.health_check())[0]
+    # A direct inspect first: if `docker run` cannot start, its reason is in the error message.
+    probe = tmp_path / "probe"
+    (probe / "input").mkdir(parents=True)
+    shutil.copyfile(FIXTURE, probe / "input" / "scene.blend")
+    info = await run_worker(
+        service.runner, probe, "inspect", WorkerCommand.INSPECT,
+        InspectSpec(result_path=spec_paths("inspect")[1]), InspectResult, 300,
+    )  # fmt: skip
+    assert info.autoexec_disabled
     started = time.monotonic()
     try:
         scene = await service.upload_scene(chunks(FIXTURE.read_bytes(), 1 << 20))
