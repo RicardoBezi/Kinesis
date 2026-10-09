@@ -45,6 +45,30 @@ def ci_jobs() -> list[tuple[str, str]]:
     return list(dict.fromkeys(out))
 
 
+def ruleset_active() -> bool:
+    """True when GitHub reports an active ruleset on this repository (via the gh CLI)."""
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            [  # noqa: S607
+                "gh",
+                "api",
+                "repos/{owner}/{repo}/rulesets",
+                "--jq",
+                '[.[] | select(.enforcement == "active")] | length',
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return out.returncode == 0 and out.stdout.strip() not in ("", "0")
+
+
 def build(bench: dict[str, Any], vlm: dict[str, Any] | None) -> str:
     rows = bench["scenes"]
     q = [r for r in rows if r["runner"] == bench["quality_runner"]]
@@ -90,8 +114,17 @@ def build(bench: dict[str, Any], vlm: dict[str, Any] | None) -> str:
             "container4": "the worker container on 4 CPUs",
             "container2": "the worker container on 2 CPUs",
         }.get(runner, runner)
+        runner_rows = [r for r in rows if r["runner"] == runner]
+        model_s = statistics.median(
+            (r["stage_s"].get("plan_repair") or 0) + (r["stage_s"].get("evaluate") or 0)
+            for r in runner_rows
+        )
+        if any(r["model_cost_usd"] is not None for r in runner_rows):
+            detail = f", including a median {model_s:.1f} s of Token Factory calls (plan + visual review)"
+        else:
+            detail = ", without model calls (deterministic presets)"
         lines.append(
-            f"- **Upload → A/B ready for review:** median {secs:.1f} s with {label} {src}."
+            f"- **Upload → A/B ready for review:** median {secs:.1f} s with {label}{detail} {src}."
         )
     if cost is not None:
         lines.append(
@@ -101,8 +134,8 @@ def build(bench: dict[str, Any], vlm: dict[str, Any] | None) -> str:
         lines.append(f"- **Container start-up overhead:** {startup:.2f} s per worker step {src}.")
     if winner:
         lines.append(
-            f"- **Vision model chosen by bake-off:** `{winner['model']}`, with accuracy {winner['accuracy']:.2f} "
-            f"on trials that have a known answer, {winner['valid_json_rate']:.0%} valid JSON and "
+            f"- **Vision model chosen by bake-off:** `{winner['model']}`, with no wrong answer in {winner['trials']} "
+            f"trials that have a known answer (a small sample), {winner['valid_json_rate']:.0%} valid JSON and "
             f"${winner['cost_per_review_usd']:.4f} per review {src}."
         )
     lines += [
@@ -136,7 +169,11 @@ def build(bench: dict[str, Any], vlm: dict[str, Any] | None) -> str:
         "- **Golden parity:** the containerized worker reproduces the golden metrics of host Blender. A nightly CI job checks this, and opens an issue on failure.",
         "- **Fault injection:** every row of the failure-mode matrix has a scenario, covering model timeouts and 429s, the breaker, Blender crashes and timeouts, malformed results, Redis outage, cancellation, and Nebius job errors.",
         "- **CI jobs:** " + "; ".join(f"`{wf}` / {name}" for wf, name in ci_jobs()) + ".",
-        "- **Required checks on `main`** (squash-only PRs): "
+        (
+            "- **Required checks on `main`** (squash-only PRs, enforced by a GitHub ruleset): "
+            if ruleset_active()
+            else "- **Required checks on `main`** (proposed in `infra/github/ruleset-main.json`; not yet enforced): "
+        )
         + ", ".join(f"`{c}`" for c in REQUIRED_CHECKS)
         + ".",
         "",
@@ -146,7 +183,8 @@ def build(bench: dict[str, Any], vlm: dict[str, Any] | None) -> str:
         f"{min(after_a, after_b):.2f} cm across {n} benchmark scenes with zero collateral motion, using non-destructive "
         "Blender NLA layers.",
         f"- Designed a DAG job engine (FastAPI, asyncio, SQLite) that runs repair candidates concurrently in headless "
-        f"Blender, with retries, a circuit breaker and caching. Upload to A/B review takes a median {per_runner.get('local', 0):.1f} s.",
+        f"Blender, with retries, a circuit breaker and caching. Upload to A/B review takes a median "
+        f"{per_runner.get('container4', per_runner.get('local', 0)):.1f} s on 4 CPUs without model calls.",
         "- Integrated NVIDIA Nemotron 3 Super through Nebius Token Factory as a bounded planner behind a validation gate"
         + (f", at a median model cost of ${cost:.4f} per repair" if cost is not None else "")
         + ". Chose the vision model by an evidence-based bake-off.",

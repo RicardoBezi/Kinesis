@@ -22,11 +22,14 @@ class ProviderKind(StrEnum):
 class RunnerKind(StrEnum):
     LOCAL = "local"  # host Blender (KINESIS_BLENDER_BIN)
     CONTAINER = "container"  # the worker image via docker (KINESIS_WORKER_IMAGE)
-    NEBIUS = "nebius"  # Nebius Serverless Jobs (not implemented; see docs/PHASE6.md)
+    NEBIUS = "nebius"  # Nebius Serverless Jobs (docs/PHASE6.md; live runs pending)
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", frozen=True)
+    # Empty values (e.g. `NEBIUS_PRICE_PER_HOUR_USD=` copied from .env.example) mean "unset".
+    model_config = SettingsConfigDict(
+        env_file=".env", extra="ignore", frozen=True, env_ignore_empty=True
+    )
 
     # runtime
     kinesis_env: str = "dev"

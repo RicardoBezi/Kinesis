@@ -42,6 +42,11 @@ SELECTION = {
 }
 
 
+# Model output can contain characters a Windows console (cp1252) cannot print.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="replace")
+
+
 def say(step: str, text: str) -> None:
     print(f"[{step:>9}] {text}", flush=True)
 

@@ -62,12 +62,14 @@ def recommend(
         return OBJECTIVE_WEIGHT * r.score + VISUAL_WEIGHT * visual_score(visual[r.candidate_id])
 
     best = max(ungated, key=lambda r: (combined(r), -ungated.index(r)))
-    visual_best = max(ungated, key=lambda r: visual_score(visual[r.candidate_id]))
+    top = max(visual_score(visual[r.candidate_id]) for r in ungated)
+    leaders = [r for r in ungated if visual_score(visual[r.candidate_id]) == top]
+    visual_best = leaders[0] if len(leaders) == 1 else None  # a tie favours no one
     reason = (
         f"Candidate {best.label.value} scores highest overall ({combined(best):.2f}: objective "
         f"{best.score:.2f}, visual {visual_score(visual[best.candidate_id]):.2f})."
     )
-    if visual_best.label is not objective_best.label:
+    if visual_best is not None and visual_best.label is not objective_best.label:
         reason += (
             f" The measurements favour {objective_best.label.value}; the visual review favours "
             f"{visual_best.label.value}."

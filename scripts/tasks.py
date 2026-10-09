@@ -222,6 +222,11 @@ def bench(args: list[str]) -> int:
     return run([sys.executable, str(ROOT / "scripts" / "bench.py"), *args], env=env)
 
 
+@task("specs", "Generate docs/SPECS.md from the saved benchmark data (no runs, no spend)")
+def specs(args: list[str]) -> int:
+    return run([sys.executable, str(ROOT / "scripts" / "specs.py"), *args])
+
+
 @task("vlm-bakeoff", "Vision-model bake-off on real fixture previews (Token Factory, capped $0.30)")
 def vlm_bakeoff(args: list[str]) -> int:
     env = {k: v for k, v in dotenv().items() if v and k not in os.environ}
