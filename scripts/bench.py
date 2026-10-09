@@ -320,6 +320,14 @@ def markdown(data: dict[str, Any]) -> str:
         "  - `container4` / `container2`: the worker image, rendering on CPU (Mesa llvmpipe) with 4 or 2 CPUs.",
         f"- **Models:** the `local` pass {'uses' if data['models'] else 'does not use'} Token Factory, with planner `{data.get('planner_model')}` and vision `{data.get('vision_model')}`. The container passes use the null provider.",
         "",
+        "## Scenes",
+        "",
+        "- `foot_slide_v1`: the canonical synthetic fixture (10 cm sideways slide on `foot.L`).",
+        "- `small_backward`, `right_foot`, `long_diagonal`: variants of the fixture motion with other injected slides (`kinesis.testing.synthetic.VARIANTS`).",
+        "- `ual_walk_slide` (when present): a real game rig, the Quaternius *Universal Animation Library* mannequin "
+        "(CC0, 65 bones, UE-style names), walking 4 cycles of `Walk_Loop` with root motion; "
+        "an 8 cm sideways slide is added to `foot_l` on frames 66-88 by `blender/fixtures/build_ual_walk.py`.",
+        "",
         "## Repair quality per scene",
         "",
         f"Acceptance means planted slip below {ACCEPT_CM:g} cm after the repair. *Foot-lock error* is the RMS wander of the planted foot (`contact_error_cm`). "
