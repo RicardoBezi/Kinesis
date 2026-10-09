@@ -219,6 +219,32 @@ async def test_startup_check_fails_fast_only_on_definite_misconfiguration() -> N
     await verify_provider(Svc(provider(down)))  # type: ignore[arg-type]  # warns, no raise
 
 
+async def test_nvidia_vision_model_is_preferred_when_listed(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    catalog = {
+        "data": [
+            *CATALOG["data"],
+            {"id": "nvidia/Nemotron-Nano-12B-VL", "architecture": {"modality": "text+image->text"}},
+            {"id": "nvidia/other-image", "architecture": {"modality": "text+image->text"}},
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=catalog)
+
+    p = provider(handler)
+    with caplog.at_level("WARNING", logger="kinesis.providers.token_factory"):
+        assert await p.verify_models() == []
+    assert p.vision_model == "nvidia/Nemotron-Nano-12B-VL"  # VL-named ids win
+    assert any(r.message == "provider.vision_model_upgraded" for r in caplog.records)
+    unchanged = provider(catalog_handler)  # no NVIDIA image model listed (today's catalog)
+    await unchanged.verify_models()
+    assert unchanged.vision_model == "openbmb/vision"
+    await p.aclose()
+    await unchanged.aclose()
+
+
 def test_build_provider_needs_a_key() -> None:
     settings = Settings(kinesis_provider=ProviderKind.TOKEN_FACTORY, nebius_api_key=None)
     with pytest.raises(ValueError, match="NEBIUS_API_KEY"):

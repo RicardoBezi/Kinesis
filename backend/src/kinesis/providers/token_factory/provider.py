@@ -41,7 +41,7 @@ from kinesis.schemas import ModelVisualJudgement, RepairPlan, TokenUsage, Visual
 log = logging.getLogger("kinesis.providers.token_factory")
 
 PLANNER_MAX_TOKENS = 4096  # Super spends most of its budget on reasoning (spike S4)
-EVALUATOR_MAX_TOKENS = 600
+EVALUATOR_MAX_TOKENS = 4096  # reasoning vision models (GLM, DeepSeek) think before answering
 
 
 class TokenFactoryProvider:
@@ -54,8 +54,11 @@ class TokenFactoryProvider:
         planner_model: str,
         vision_model: str,
         classifier_model: str | None = None,
+        prefer_nvidia_vision: bool = True,
     ) -> None:
         self.client = client
+        self.prefer_nvidia_vision = prefer_nvidia_vision
+        self.evaluator_max_tokens = EVALUATOR_MAX_TOKENS  # raise for reasoning vision models
         self.planner_model = planner_model
         self.vision_model = vision_model
         self.classifier_model = classifier_model
@@ -138,7 +141,7 @@ class TokenFactoryProvider:
             self.vision_model,
             messages,
             response_format=response_format("visual_judgement", JUDGEMENT_SCHEMA),
-            max_tokens=EVALUATOR_MAX_TOKENS,
+            max_tokens=self.evaluator_max_tokens,
             temperature=0.0,
         )
         if chat.content is None:
@@ -156,6 +159,7 @@ class TokenFactoryProvider:
             performance_preservation=judgement.performance_preservation,
             instruction_adherence=judgement.instruction_adherence,
             notes=judgement.notes,
+            prefers_over_original=judgement.prefers_over_original,
             model_id=chat.model,
             usage=chat.usage,
             latency_ms=chat.latency_ms,
@@ -204,6 +208,7 @@ class TokenFactoryProvider:
         for m in models.values():
             if m.price_in_per_m is not None and m.price_out_per_m is not None:
                 self.prices[m.id] = (m.price_in_per_m, m.price_out_per_m)
+        self._maybe_upgrade_vision(models)
         problems: list[str] = []
         planner: ModelInfo | None = models.get(self.planner_model)
         vision: ModelInfo | None = models.get(self.vision_model)
@@ -223,6 +228,26 @@ class TokenFactoryProvider:
         if self.classifier_model and self.classifier_model not in models:
             problems.append(f"classifier model {self.classifier_model!r} is not in the catalog")
         return problems
+
+    def _maybe_upgrade_vision(self, models: dict[str, ModelInfo]) -> None:
+        """NVIDIA VL upgrade path (owner decision 2026-10-09): if the catalog ever lists an
+        image-capable ``nvidia/*`` model, use it for visual evaluation (VL-named ids first)."""
+        if not self.prefer_nvidia_vision or self.vision_model.lower().startswith("nvidia/"):
+            return
+        candidates = sorted(
+            (
+                m.id
+                for m in models.values()
+                if m.id.lower().startswith("nvidia/") and m.accepts_images
+            ),
+            key=lambda i: ("vl" not in i.lower(), i),
+        )
+        if candidates:
+            log.warning(
+                "provider.vision_model_upgraded",
+                extra={"from": self.vision_model, "to": candidates[0]},
+            )
+            self.vision_model = candidates[0]
 
     async def health_check(self) -> ProviderHealth:
         try:

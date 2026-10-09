@@ -173,6 +173,7 @@
         "naturalness": 5,
         "notes": "Softer release; heel stays down.",
         "performance_preservation": 5,
+        "prefers_over_original": null,
         "usage": {
           "completion_tokens": 120,
           "prompt_tokens": 2048

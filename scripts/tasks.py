@@ -204,6 +204,15 @@ def live_nebius_jobs_test(args: list[str]) -> int:
     )
 
 
+@task("vlm-bakeoff", "Vision-model bake-off on real fixture previews (Token Factory, capped $0.30)")
+def vlm_bakeoff(args: list[str]) -> int:
+    env = {k: v for k, v in dotenv().items() if v and k not in os.environ}
+    exe = blender_bin()
+    if exe:
+        env.setdefault("KINESIS_BLENDER_BIN", exe)
+    return run([sys.executable, str(ROOT / "scripts" / "vlm_bakeoff.py"), *args], env=env)
+
+
 def dotenv(path: Path = ROOT / ".env") -> dict[str, str]:
     """KEY=VALUE pairs from .env (comments and blanks ignored). Values are never printed."""
     values: dict[str, str] = {}

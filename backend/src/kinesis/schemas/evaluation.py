@@ -33,6 +33,7 @@ class VisualEvaluation(KinesisModel):
     performance_preservation: Score
     instruction_adherence: Score
     notes: Annotated[str, StringConstraints(max_length=1000)] = ""
+    prefers_over_original: bool | None = None
     model_id: Annotated[str, StringConstraints(max_length=200)]
     usage: TokenUsage = TokenUsage()
     latency_ms: int = Field(default=0, ge=0)

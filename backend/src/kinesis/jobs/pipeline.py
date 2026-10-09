@@ -434,10 +434,13 @@ def build_repair_dag(ctx: JobContext) -> tuple[list[Node], dict[str, Codec]]:
 
         return fn
 
-    def render_spec(planned: Planned, blend_frames: int) -> RenderSpec:
+    def render_spec(planned: Planned) -> RenderSpec:
+        """ONE crop camera for Original, A and B: framed on the widest blend window of the
+        plan, so all panes (and the vision model) compare exactly the same view."""
         motion = planned.analysis.motion
         ankle, ball = foot_and_toe(motion, chain.foot, chain.toe)
         a, b = planned.interval
+        blend_frames = max(p.blend_frames for p in planned.plan.candidates.values())
         return crop_render_spec(
             ankle,
             ball,
@@ -453,14 +456,13 @@ def build_repair_dag(ctx: JobContext) -> tuple[list[Node], dict[str, Codec]]:
             gen: Generated = inputs[f"generate_{label.value}"]
             planned = gen.planned
             cid = planned.candidate_ids[label]
-            params = planned.plan.candidates[label]
             node, spec = candidate_apply_spec(
                 ctx.job_id,
                 label,
                 cid,
                 scope.armature,
                 gen.result.bone_keys(),
-                render_spec(planned, params.blend_frames) if cfg.render_previews else None,
+                render_spec(planned) if cfg.render_previews else None,
             )
             result = await run_worker(
                 svc.runner,
@@ -563,8 +565,7 @@ def build_repair_dag(ctx: JobContext) -> tuple[list[Node], dict[str, Codec]]:
         planned: Planned = inputs["plan_repair"]
         if not cfg.render_previews:
             raise SkipNode("previews disabled")
-        k = max(p.blend_frames for p in planned.plan.candidates.values())
-        node, spec = original_render_spec(scope.armature, render_spec(planned, k))
+        node, spec = original_render_spec(scope.armature, render_spec(planned))
         result = await run_worker(
             svc.runner,
             ctx.job_dir,
@@ -822,10 +823,9 @@ async def _evaluate(
     elif original is None or not original.crop_frames:
         evaluator_status = EvaluatorStatus.DEGRADED  # nothing to compare against
     else:
-        for s in scored:
-            value = await _evaluate_one(ctx, s, original)
-            if value is not None:
-                visual.append(value)
+        # One review per candidate, concurrently: the job waits for the slowest, not the sum.
+        reviews = await asyncio.gather(*(_evaluate_one(ctx, s, original) for s in scored))
+        visual = [v for v in reviews if v is not None]
         ok = len(visual) == len(scored)
         evaluator_status = EvaluatorStatus.OK if ok else EvaluatorStatus.DEGRADED
     rec = recommend(
