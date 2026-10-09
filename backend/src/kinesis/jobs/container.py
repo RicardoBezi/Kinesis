@@ -29,10 +29,20 @@ DOCKER_RUN_ERRORS = (125, 126, 127)
 class ContainerJobRunner(LocalJobRunner):
     name = "container"
 
-    def __init__(self, image: str = DEFAULT_IMAGE, docker: str = "docker") -> None:
+    def __init__(
+        self,
+        image: str = DEFAULT_IMAGE,
+        docker: str = "docker",
+        *,
+        cpus: float | None = None,
+        memory: str = "4g",
+    ) -> None:
         super().__init__(Path(docker))
         self.image = image
         self.docker = docker
+        # Docker rejects a CPU cap above what the host has (hosted CI runners have 2).
+        self.cpus = cpus if cpus is not None else float(min(4, os.cpu_count() or 1))
+        self.memory = memory
 
     def container_argv(self, invocation: WorkerInvocation, container: str) -> list[str]:
         job_dir = invocation.job_dir.resolve()
@@ -47,7 +57,8 @@ class ContainerJobRunner(LocalJobRunner):
             self.docker, "run", "--rm", "--name", container,
             "--network", "none", "--read-only",
             "--tmpfs", "/tmp:rw,size=512m",  # noqa: S108 - a tmpfs inside the container
-            "--security-opt", "no-new-privileges", "--cpus", "4", "--memory", "4g",
+            "--security-opt", "no-new-privileges",
+            "--cpus", f"{self.cpus:g}", "--memory", self.memory,
             *user,
             "-v", f"{job_dir}:/work",
             self.image,

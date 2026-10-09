@@ -46,6 +46,16 @@ def test_container_argv_is_isolated_and_fixed(tmp_path: Path) -> None:
     assert again[again.index("--name") + 1] != name  # every run gets its own container
 
 
+def test_cpu_cap_never_exceeds_the_host(tmp_path: Path) -> None:
+    import os
+
+    argv, _ = ContainerJobRunner().launch(invocation(tmp_path))
+    cpus = float(argv[argv.index("--cpus") + 1])
+    assert 0 < cpus <= min(4, os.cpu_count() or 1)
+    explicit, _ = ContainerJobRunner(cpus=1.5).launch(invocation(tmp_path))
+    assert explicit[explicit.index("--cpus") + 1] == "1.5"
+
+
 def test_container_argv_rejects_escaping_specs(tmp_path: Path) -> None:
     bad = WorkerInvocation(tmp_path, WorkerCommand.EXTRACT, "../x.spec.json", "r.json", 10)
     with pytest.raises(ValueError, match="unsafe"):
