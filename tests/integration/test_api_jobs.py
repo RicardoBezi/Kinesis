@@ -311,5 +311,13 @@ async def test_not_ready_resources_are_409(api_factory: Any) -> None:
 async def test_metrics_endpoint_counts_jobs_and_nodes(api: Api) -> None:
     await api.ready_job()
     text = (await api.client.get("/v1/metrics")).text
-    assert 'kinesis_jobs_finished_total{status="AWAITING_DECISION"}' in text
-    assert 'kinesis_node_seconds_count{node="extract_scope",status="SUCCEEDED"}' in text
+    for needle in (
+        'kinesis_job_duration_seconds_count{outcome="AWAITING_DECISION"}',
+        'kinesis_node_duration_seconds_count{node="extract_scope"}',
+        'kinesis_worker_duration_seconds_count{command="apply_render",runner="fake"}',
+        'kinesis_render_duration_seconds_count{runner="fake"}',
+        'kinesis_candidates_total{status="SUCCEEDED"}',
+        'kinesis_plan_source_total{source="MODEL"}',
+        'kinesis_provider_calls_total{model="mock/planner",outcome="ok",task="plan"}',
+    ):
+        assert needle in text, needle

@@ -28,7 +28,7 @@ from kinesis.jobs.runner import JobRunner
 from kinesis.jobs.specs import export_spec
 from kinesis.jobs.worker_io import run_worker, spec_paths
 from kinesis.observability.context import bind
-from kinesis.observability.metrics import JOBS_FINISHED, NODE_SECONDS
+from kinesis.observability.metrics import CANDIDATES, JOB_DURATION, NODE_DURATION
 from kinesis.orchestration.breaker import CircuitBreaker
 from kinesis.orchestration.cache import Cache
 from kinesis.orchestration.dag import Node, NodeStatus, RetryPolicy
@@ -276,16 +276,15 @@ class JobService:
     async def _transition(self, job_id: str, to: JobStatus, message: str) -> RepairJob:
         job = await self.store.transition(job_id, to, message=message)
         if to is not JobStatus.RUNNING and to is not JobStatus.APPLYING:
-            JOBS_FINISHED.labels(to.value).inc()
+            elapsed = (job.updated_at - job.created_at).total_seconds()
+            JOB_DURATION.labels(to.value).observe(max(0.0, elapsed))
         return job
 
     @staticmethod
     def _observe(result: DagResult) -> None:
         for node_id, outcome in result.outcomes.items():
             if outcome.status not in (NodeStatus.PENDING, NodeStatus.SKIPPED):
-                NODE_SECONDS.labels(node_id, outcome.status.value).observe(
-                    outcome.elapsed_ms / 1000
-                )
+                NODE_DURATION.labels(node_id).observe(outcome.elapsed_ms / 1000)
 
     async def _run(self, job_id: str, scene: SceneRef) -> None:
         with bind(job_id=job_id):
@@ -318,6 +317,8 @@ class JobService:
             await self._transition(ctx.job_id, JobStatus.FAILED, error.message)
 
     async def _finalize(self, ctx: JobContext, result: DagResult) -> None:
+        for candidate in ctx.job.candidates:
+            CANDIDATES.labels(candidate.status.value).inc()
         for node_id in ANALYSIS_NODES:
             outcome = result.outcomes[node_id]
             if outcome.status is NodeStatus.FAILED:

@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from kinesis.errors import SelectionInvalid, WorkerOutputInvalid, WorkerReportedFailure
 from kinesis.jobs.runner import JobRunner, WorkerInvocation, assert_inside
+from kinesis.observability.metrics import WORKER_DURATION
 from kinesis.schemas.common import ErrorCode, KinesisModel
 from kinesis.schemas.worker import WorkerCommand, WorkerFailure
 
@@ -94,6 +95,7 @@ async def run_worker[M: KinesisModel](
             timeout_s=timeout_s,
         )
     )
+    WORKER_DURATION.labels(command.value, runner.name).observe(outcome.elapsed_ms / 1000)
     return read_result(outcome.result_path, result_model)
 
 

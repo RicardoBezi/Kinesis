@@ -27,6 +27,7 @@ from typing import Any
 
 from kinesis.errors import KinesisError
 from kinesis.observability.context import attempt_var, candidate_var, node_var
+from kinesis.observability.metrics import CACHE_REQUESTS, cache_namespace
 from kinesis.orchestration.cache import Cache
 from kinesis.orchestration.dag import Node, NodeStatus, should_run, validate_graph
 from kinesis.schemas.common import ErrorCode
@@ -188,6 +189,7 @@ class DagRunner:
         codec = self._codecs.get(node.id)
         if key is not None and codec is not None and self._cache is not None:
             hit = await self._cache.get(key)
+            CACHE_REQUESTS.labels(cache_namespace(key), "miss" if hit is None else "hit").inc()
             if hit is not None:
                 await self._emit(NodeEvent(NodeEventKind.CACHE_HIT, node))
                 return done(NodeOutcome(NodeStatus.SUCCEEDED, codec.decode(hit), cached=True))

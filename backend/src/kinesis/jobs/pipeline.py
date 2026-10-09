@@ -33,10 +33,14 @@ from kinesis.evaluation.recommend import recommend
 from kinesis.jobs.specs import candidate_apply_spec, original_render_spec
 from kinesis.jobs.worker_io import run_worker, spec_paths
 from kinesis.observability.metrics import (
-    MODEL_CALLS,
-    MODEL_COST_USD,
-    MODEL_TOKENS,
-    PLAN_FALLBACKS,
+    PLAN_SOURCE,
+    PROVIDER_CALLS,
+    PROVIDER_COST,
+    PROVIDER_LATENCY,
+    PROVIDER_TOKENS,
+    RENDER_DURATION,
+    RETRIES,
+    provider_error_outcome,
 )
 from kinesis.orchestration.cache import cache_key
 from kinesis.orchestration.dag import JoinPolicy, Node, RetryPolicy
@@ -236,6 +240,7 @@ class JobContext:
                 JobEventType.NODE_SKIPPED, node=node.id, candidate_id=cid, message=event.message
             )
         elif event.kind is NodeEventKind.RETRY:
+            RETRIES.labels(node.id).inc()
             await self.emit(
                 JobEventType.NODE_RETRY,
                 node=node.id,
@@ -408,6 +413,7 @@ def build_repair_dag(ctx: JobContext) -> tuple[list[Node], dict[str, Codec]]:
             for label, params in plan.candidates.items()
         }
         ctx.candidate_ids.update(ids)
+        PLAN_SOURCE.labels(plan.plan_source.value).inc()
         candidates = tuple(
             RepairCandidate(candidate_id=ids[label], label=label, parameters=plan.candidates[label])
             for label in sorted(plan.candidates)
@@ -465,6 +471,8 @@ def build_repair_dag(ctx: JobContext) -> tuple[list[Node], dict[str, Codec]]:
                 ApplyRenderResult,
                 cfg.apply_timeout_s,
             )
+            if result.render_ms:
+                RENDER_DURATION.labels(svc.runner.name).observe(result.render_ms / 1000)
             expected = planned.analysis.extract.original_action_hash
             if not (
                 result.original_action_hash_before == result.original_action_hash_after == expected
@@ -688,6 +696,7 @@ async def _plan(ctx: JobContext, analysis: Analysis, scene_range: tuple[int, int
     req = PlanRequest(job.selection, scope, analysis.detection.report, scene_range)
 
     async def on_retry(attempt: int, exc: BaseException, delay: float) -> None:
+        RETRIES.labels("plan_repair").inc()
         await ctx.emit(
             JobEventType.NODE_RETRY,
             node="plan_repair",
@@ -706,7 +715,8 @@ async def _plan(ctx: JobContext, analysis: Analysis, scene_range: tuple[int, int
         )
     except ProviderError as exc:
         reason = f"{exc.code.value}: {describe(exc)}"
-        PLAN_FALLBACKS.labels(exc.code.value).inc()
+        model = getattr(svc.provider, "planner_model", svc.provider.name)
+        PROVIDER_CALLS.labels(model, "plan", provider_error_outcome(exc)).inc()
         await ctx.emit(
             JobEventType.PLAN_REJECTED,
             node="plan_repair",
@@ -717,7 +727,6 @@ async def _plan(ctx: JobContext, analysis: Analysis, scene_range: tuple[int, int
     record_model_call("plan", result)
     plan = result.value or default_plan(job.selection, scope, "provider returned no plan")
     if result.status is ResultStatus.INVALID:
-        PLAN_FALLBACKS.labels(ErrorCode.PLAN_INVALID.value).inc()
         await ctx.emit(
             JobEventType.PLAN_REJECTED,
             node="plan_repair",
@@ -753,6 +762,8 @@ async def _evaluate_one(
             jitter=svc.jitter,
         )
     except ProviderError as exc:
+        model = getattr(svc.provider, "vision_model", svc.provider.name)
+        PROVIDER_CALLS.labels(model, "evaluate", provider_error_outcome(exc)).inc()
         log.warning("evaluate.provider_failed", extra={"error": describe(exc)})
         return None
     record_model_call("evaluate", result)
@@ -764,11 +775,13 @@ async def _evaluate_one(
 def record_model_call(task: str, result: ProviderResult[Any]) -> None:
     """Prometheus counters and one structured log line per model call (token and cost)."""
     model = result.model_id or "unknown"
-    MODEL_CALLS.labels(task, model, result.status.value).inc()
-    MODEL_TOKENS.labels(model, "prompt").inc(result.usage.prompt_tokens)
-    MODEL_TOKENS.labels(model, "completion").inc(result.usage.completion_tokens)
+    outcome = "ok" if result.status is ResultStatus.OK else "invalid"
+    PROVIDER_CALLS.labels(model, task, outcome).inc()
+    PROVIDER_LATENCY.labels(model, task).observe(result.latency_ms / 1000)
+    PROVIDER_TOKENS.labels(model, "prompt").inc(result.usage.prompt_tokens)
+    PROVIDER_TOKENS.labels(model, "completion").inc(result.usage.completion_tokens)
     if result.cost_usd is not None:
-        MODEL_COST_USD.labels(model).inc(result.cost_usd)
+        PROVIDER_COST.labels(model).inc(result.cost_usd)
     log.info(
         "model.call",
         extra={

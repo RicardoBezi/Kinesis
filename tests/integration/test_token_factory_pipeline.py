@@ -116,7 +116,7 @@ async def test_job_uses_model_plan_and_visual_evaluation(make_service: Any) -> N
         transport=httpx.MockTransport(fake),
     )
     assert await provider.verify_models() == []
-    cost_before = _metric("kinesis_model_cost_usd_total", model=PLANNER)
+    cost_before = _metric("kinesis_provider_cost_usd_total", model=PLANNER)
     service = make_service(provider=provider)
     job = await run_job(service, instruction="keep the heel planted")
 
@@ -138,7 +138,7 @@ async def test_job_uses_model_plan_and_visual_evaluation(make_service: Any) -> N
     planner_call = next(r for r in fake.requests if r["model"] == PLANNER)
     assert "keep the heel planted" in planner_call["messages"][1]["content"]
     expected = (900 * 0.3 + 700 * 0.9) / 1e6
-    assert _metric("kinesis_model_cost_usd_total", model=PLANNER) - cost_before == pytest.approx(
+    assert _metric("kinesis_provider_cost_usd_total", model=PLANNER) - cost_before == pytest.approx(
         expected
     )
     await provider.aclose()

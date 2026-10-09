@@ -8,6 +8,8 @@ from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from kinesis.observability.metrics import CACHE_REQUESTS
+
 log = logging.getLogger("kinesis.cache")
 
 
@@ -89,6 +91,7 @@ class RedisCache:
             return await op()
         except (RedisError, OSError, TimeoutError) as exc:
             self.degraded_calls += 1
+            CACHE_REQUESTS.labels("redis", "degraded").inc()
             now = self._clock()
             if now - self._last_log >= self._log_every_s:
                 self._last_log = now
