@@ -86,3 +86,19 @@ jobs:
         run: |
           "$KINESIS_BLENDER_BIN" --version
           uv run pytest -m blender
+
+  # Phase 6: the containerized worker must give the same golden results as host Blender.
+  # Nightly / manual / when the image changes, because the image is ~2 GB to build.
+  container:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: build the worker image
+        run: uv run task worker-image
+      - name: container parity test
+        run: uv run task test-container -s

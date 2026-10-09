@@ -175,6 +175,23 @@ def test_blender(args: list[str]) -> int:
     return run(pytest("-m", "blender", *args), env={"KINESIS_BLENDER_BIN": exe})
 
 
+@task("worker-image", "Build the Blender worker container image (kinesis-worker:4.5.14)")
+def worker_image(args: list[str]) -> int:
+    return run(
+        [
+            *("docker", "build", "-f", "infra/docker/blender-worker.Dockerfile"),
+            *("-t", f"kinesis-worker:{BLENDER_VERSION}", *args, "blender/worker"),
+        ]
+    )
+
+
+@task("test-container", "Containerized worker parity tests (needs docker + `task worker-image`)")
+def test_container(args: list[str]) -> int:
+    exe = blender_bin()
+    env = {"KINESIS_BLENDER_BIN": exe} if exe else {}
+    return run(pytest("-m", "container", *args), env=env)
+
+
 def dotenv(path: Path = ROOT / ".env") -> dict[str, str]:
     """KEY=VALUE pairs from .env (comments and blanks ignored). Values are never printed."""
     values: dict[str, str] = {}

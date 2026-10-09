@@ -20,8 +20,9 @@ class ProviderKind(StrEnum):
 
 
 class RunnerKind(StrEnum):
-    LOCAL = "local"
-    NEBIUS = "nebius"
+    LOCAL = "local"  # host Blender (KINESIS_BLENDER_BIN)
+    CONTAINER = "container"  # the worker image via docker (KINESIS_WORKER_IMAGE)
+    NEBIUS = "nebius"  # Nebius Serverless Jobs (not implemented; see docs/PHASE6.md)
 
 
 class Settings(BaseSettings):
@@ -38,6 +39,7 @@ class Settings(BaseSettings):
     kinesis_blender_bin: Path | None = None
     kinesis_blender_timeout_s: float = Field(default=300, gt=0)
     kinesis_job_runner: RunnerKind = RunnerKind.LOCAL
+    kinesis_worker_image: str = "kinesis-worker:4.5.14"
 
     # model provider
     kinesis_provider: ProviderKind = ProviderKind.NULL

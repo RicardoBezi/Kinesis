@@ -10,6 +10,7 @@ import asyncio
 import contextlib
 import subprocess
 import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from kinesis.errors import WorkerCrashed, WorkerTimeout
@@ -20,6 +21,17 @@ WORKER_SCRIPT = REPO_ROOT / "blender" / "worker" / "main.py"
 SCENE_RELPATH = "input/scene.blend"
 HANDLED_FAILURE_EXIT = 2  # the worker caught an exception and wrote a WorkerFailure
 CRASH_EXIT = 3  # --python-exit-code: an exception escaped the worker
+
+
+AbortHook = Callable[[], Awaitable[None]]
+
+
+async def _abort(proc: asyncio.subprocess.Process, on_abort: AbortHook | None) -> None:
+    with contextlib.suppress(ProcessLookupError):
+        proc.kill()
+    await proc.wait()
+    if on_abort is not None:
+        await on_abort()
 
 
 class LocalJobRunner:
@@ -48,9 +60,14 @@ class LocalJobRunner:
             str(assert_inside(job_dir, invocation.spec_relpath)),
         ]
 
+    def launch(self, invocation: WorkerInvocation) -> tuple[list[str], AbortHook | None]:
+        """The argv to spawn, plus an optional coroutine that must run when the run is aborted
+        (timeout or cancellation) after the process itself has been killed."""
+        return self.argv(invocation), None
+
     async def run(self, invocation: WorkerInvocation) -> WorkerOutcome:
         job_dir = invocation.job_dir
-        argv = self.argv(invocation)
+        argv, on_abort = self.launch(invocation)
         result_path = assert_inside(job_dir, invocation.result_relpath)
         log_relpath = str(Path(invocation.spec_relpath).with_suffix("").with_suffix(".log"))
         log_relpath = log_relpath.replace("\\", "/")
@@ -66,14 +83,10 @@ class LocalJobRunner:
             try:
                 exit_code = await asyncio.wait_for(proc.wait(), invocation.timeout_s)
             except asyncio.CancelledError:  # job cancelled: never leave Blender running
-                with contextlib.suppress(ProcessLookupError):
-                    proc.kill()
-                await asyncio.shield(proc.wait())
+                await asyncio.shield(_abort(proc, on_abort))
                 raise
             except TimeoutError:
-                with contextlib.suppress(ProcessLookupError):
-                    proc.kill()
-                await proc.wait()
+                await _abort(proc, on_abort)
                 raise WorkerTimeout(
                     f"{invocation.command.value} exceeded {invocation.timeout_s:.0f} s"
                 ) from None

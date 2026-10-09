@@ -75,9 +75,10 @@ warn_required_dynamic_aliases = true
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-addopts = ["-ra", "--strict-markers", "-m", "not blender and not live_nebius"]
+addopts = ["-ra", "--strict-markers", "-m", "not blender and not live_nebius and not container"]
 markers = [
   "blender: requires a Blender 4.5 executable (KINESIS_BLENDER_BIN); run via `uv run task test-blender`",
+  "container: requires docker and the kinesis-worker image; run via `uv run task test-container`",
   "live_nebius: calls real Nebius Token Factory; requires KINESIS_LIVE_NEBIUS=1 and NEBIUS_API_KEY",
   "golden: golden regression thresholds on the canonical fixture",
   "fault: fault-injection scenarios",

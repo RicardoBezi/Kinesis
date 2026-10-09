@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 
 from kinesis.errors import ProviderError
+from kinesis.jobs.container import ContainerJobRunner
 from kinesis.jobs.local import LocalJobRunner
 from kinesis.jobs.runner import JobRunner
 from kinesis.jobs.service import JobService, ServiceConfig
@@ -18,7 +19,7 @@ from kinesis.providers.base import ModelProvider
 from kinesis.providers.mock import MockProvider
 from kinesis.providers.null import NullProvider
 from kinesis.providers.token_factory import ModelConfigError, TokenFactoryProvider
-from kinesis.settings import ProviderKind, Settings, get_settings
+from kinesis.settings import ProviderKind, RunnerKind, Settings, get_settings
 from kinesis.storage.sqlite import Database, SqliteArtifactStore, SqliteJobStore
 
 log = logging.getLogger("kinesis.api")
@@ -55,12 +56,23 @@ def build_cache(settings: Settings) -> Cache:
     return MemoryCache()
 
 
+def build_runner(settings: Settings) -> JobRunner:
+    if settings.kinesis_job_runner is RunnerKind.CONTAINER:
+        return ContainerJobRunner(settings.kinesis_worker_image)
+    if settings.kinesis_job_runner is RunnerKind.NEBIUS:
+        raise ValueError(
+            "KINESIS_JOB_RUNNER=nebius is not implemented yet (docs/PHASE6.md); "
+            "use local or container"
+        )
+    return LocalJobRunner(_blender_bin(settings))
+
+
 def build_service(settings: Settings, *, runner: JobRunner | None = None) -> JobService:
     db = Database(settings.db_path)
     return JobService(
         SqliteJobStore(db),
         SqliteArtifactStore(db, settings.jobs_root),
-        runner or LocalJobRunner(_blender_bin(settings)),
+        runner or build_runner(settings),
         build_provider(settings),
         ServiceConfig(
             data_dir=settings.kinesis_data_dir,
