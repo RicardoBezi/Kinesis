@@ -22,7 +22,8 @@ The MVP handles one repair class: **foot-contact / foot-sliding repair in Blende
 - **Phase 1: fixture and analysis (complete).** The canonical fixture is built in Blender 4.5, extracted headlessly, and its injected slide is measured at 10.0 cm, both in CI and on the real `.blend`. See [docs/PHASE1.md](docs/PHASE1.md).
 - **Phase 2: deterministic repair (complete).** Candidates A and B remove 100% and 88% of the slide with zero collateral change. They are applied as non-destructive NLA layers and rendered as A/B previews. See [docs/PHASE2.md](docs/PHASE2.md).
 - **Phase 3: orchestration (complete).** A DAG engine runs the whole repair per job, with retries, circuit breakers, caching and fault isolation, behind a working job API. See [docs/PHASE3.md](docs/PHASE3.md).
-- **Next: Phase 4, Nebius / NVIDIA** (Token Factory provider, model plans, multimodal evaluation). See [docs/PRODUCT.md](docs/PRODUCT.md#implementation-phases).
+- **Phase 4: Nebius / NVIDIA (complete).** Nemotron 3 Super plans the A/B parameters, and a vision model reviews the rendered frames. Both run through Token Factory, behind the same validation gate and fallbacks. Live calls cost about $0.002 per repair. See [docs/PHASE4.md](docs/PHASE4.md).
+- **Next: Phase 5, the review client** (Compose Desktop: job state, synced Original/A/B, metrics, decision). See [docs/PRODUCT.md](docs/PRODUCT.md#implementation-phases).
 
 ## Repository map
 

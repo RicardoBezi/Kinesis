@@ -124,7 +124,7 @@ Artifacts are referenced by `ArtifactReference.uri`.
 
 ## Implementation status
 
-Since Phase 3, every route works except `/v1/health/providers` (Phase 4) and `/v1/stats/product` (Phase 5), which return `501 NOT_IMPLEMENTED` Problems. `tests/unit/test_api_contract.py` pins the contracts, and `tests/integration/test_api_jobs.py` covers their behaviour.
+Every route works except `/v1/stats/product` (Phase 5), which returns a `501 NOT_IMPLEMENTED` Problem. `tests/unit/test_api_contract.py` pins the contracts, and `tests/integration/test_api_jobs.py` covers their behaviour.
 
 Two details that the tables above leave open:
 - **Choosing a FAILED candidate** returns `422 VALIDATION_ERROR`.

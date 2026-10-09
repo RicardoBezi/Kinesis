@@ -40,7 +40,7 @@ Phase 0 asked for 15 deliverables. Each one is listed here with where it lives.
 | C6 | **The MVP chain resolver assumes a thigh → shin → foot hierarchy.** Production rigs with IK controls, twist bones or FK/IK switches will hit `UNSUPPORTED_RIG` | Post-MVP | A rig-mapping config is a future milestone |
 | C7 | ~~Scaled armature objects~~ **Resolved in Phase 1:** `extract` rejects armatures with world scale ≠ 1 as `UNSUPPORTED_RIG` | Done | n/a |
 | C8 | ~~The repo lives in OneDrive~~ **Resolved 2026-10-05:** the repo moved to `C:\dev\Kinesis`, outside any synced folder | Done | n/a |
-| C9 | **Price tables for the cost-per-repair metric** must come from current Nebius pricing. Until they do, the estimate is reported as `null` | Phase 4/6 | n/a |
+| C9 | ~~Price tables for the cost-per-repair metric~~ **Resolved in Phase 4 for model calls:** prices come from the live catalog (USD per token). Serverless compute cost follows in Phase 6 | Phase 6 (compute) | n/a |
 | C10 | **Generator quirk:** openapi-generator 7.14 emits BigDecimal-style defaults, which are patched in `build.gradle.kts`. Re-check this when bumping the generator | On upgrade | n/a |
 
 ## Phase 1 plan (fixture and analysis): done, see [PHASE1.md](PHASE1.md)

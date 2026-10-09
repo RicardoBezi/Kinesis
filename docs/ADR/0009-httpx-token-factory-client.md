@@ -31,4 +31,11 @@ Build `TokenFactoryClient` on `httpx.AsyncClient`:
 ## S4 result and deviation (2026-10-05)
 - **Confirmed:** the base URL `https://api.tokenfactory.nebius.com/v1/` with Bearer auth; `json_schema` structured output on Nemotron Super, Nemotron Nano and MiniCPM-V; data-URL image input; `usage` including reasoning tokens.
 - **Deviation:** Token Factory has **no image-capable Nemotron**, so the "Nemotron 3 Nano Omni" in the spec is unavailable. Visual evaluation uses `openbmb/MiniCPM-V-4_5` behind the same `ModelProvider` interface, with at most 10 images per request. Planning and classification stay on Nemotron (Super and Nano). If NVIDIA releases a multimodal Nemotron on Token Factory, switching to it is a one-line change to `KINESIS_VISION_MODEL` plus a contract re-check.
-- **Startup check:** `GET /models?verbose=true` exposes modality and features. At startup the provider will verify that the configured vision model is `text+image->text` and that the planner supports structured outputs, and fail fast if not.
+- **Startup check:** `GET /models?verbose=true` exposes modality and features. At startup the provider verifies that the configured models exist and that the vision model is `text+image->text`, and fails fast if not.
+
+## Phase 4 live findings (2026-10-08)
+- **Pricing units.** The catalog's `pricing.prompt` and `pricing.completion` are **USD per token** (for example, `"0.0000003"` = $0.30 per 1M). The client converts them to per-1M on load.
+- **Feature tags are incomplete.** Nemotron Super is tagged only `tools` and `reasoning`, but honours strict `json_schema`. A missing `structured_outputs` tag therefore only logs a warning; it is not a startup failure.
+- **Measured calls:**
+  - planner: about 0.8k prompt and 0.8–1.2k completion tokens, 4–6 s, about $0.001;
+  - vision with 10 frames: about 1.1k prompt tokens, under 1 s, about $0.0008.

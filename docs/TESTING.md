@@ -59,8 +59,8 @@ The pytest config sets `filterwarnings = error`, so new deprecations fail the bu
 | Render | blender | the expected frame count and resolution | 2 |
 | Orchestration | unit + fault | concurrency (A and B overlap in time), retries, breaker, cancellation, partial failure || **3 ✅** |
 | API behaviour | integration | the happy path through the decision; the invalid cases in spec §11; idempotency || **3 ✅** |
-| Provider transport | contract | 429/500/400/timeout classification; fence stripping; usage parsed | 4 |
-| Live Nebius | live | model discovery, plan, multimodal evaluation | 4 |
+| Provider transport | contract | 429/500/400/timeout classification; fence stripping; usage parsed || **4 ✅** |
+| Live Nebius | live | model discovery, plan, multimodal evaluation || **4 ✅** |
 | Kotlin client | gradle test | serialization round-trips; state reducer; A/B selection; poll recovery; loading and error states | 0 (serialization) / 5 |
 | Serverless runner | integration | the same golden results via NebiusJobRunner (fake in CI) | 6 |
 

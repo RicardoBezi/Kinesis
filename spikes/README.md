@@ -80,6 +80,7 @@ The test covered 60 random poses of a chain with non-zero rolls, under an armatu
 - **Vision evaluator:** MiniCPM-V-4.5. This is **not NVIDIA**, which departs from the spec's "NVIDIA multimodal evaluation". See ADR 0009.
 - **Evaluator input:** at most 10 images per call. Phase 4 sends 5 original and 5 candidate crop frames sampled at the same frame numbers, or alternatively a tiled contact sheet.
 - **Timeouts:** the planner timeout must allow for reasoning time. The default `KINESIS_TF_TIMEOUT_S=60` is fine; `max_tokens` will be capped.
+- **Phase 4 follow-up (2026-10-08):** the verbose catalog prices are USD **per token**, and Nemotron Super is not tagged `structured_outputs` even though it honours `json_schema`. See ADR 0009.
 
 ### S5: Serverless Jobs
 **Result: pending.** Answer the questions in [infra/nebius/README.md](../infra/nebius/README.md).
