@@ -321,3 +321,24 @@ async def test_metrics_endpoint_counts_jobs_and_nodes(api: Api) -> None:
         'kinesis_provider_calls_total{model="mock/planner",outcome="ok",task="plan"}',
     ):
         assert needle in text, needle
+
+
+async def test_job_list_and_product_stats(api: Api) -> None:
+    first = await api.ready_job()
+    second = await api.ready_job(key="key-00000002")
+    listed = (await api.client.get("/v1/jobs?limit=10")).json()
+    assert [j["job_id"] for j in listed] == [second["job_id"], first["job_id"]]
+    older = (await api.client.get(f"/v1/jobs?before={second['job_id']}")).json()
+    assert [j["job_id"] for j in older] == [first["job_id"]]
+    await api.client.post(
+        f"/v1/jobs/{first['job_id']}/decision", json={"choice": "B", "time_to_decision_s": 20}
+    )
+    await api.service.wait_idle()
+    stats = (await api.client.get("/v1/stats/product")).json()
+    assert stats["jobs_total"] == 2
+    assert stats["jobs_decided"] == 1
+    assert stats["candidate_acceptance_rate"] == 1.0
+    assert stats["model_human_agreement_rate"] == 1.0  # the objective+visual pick was B
+    assert stats["median_slip_reduction_pct"] > 80
+    assert stats["median_time_to_decision_s"] == 20
+    assert stats["cost_per_accepted_repair_usd"] is None  # the mock provider has no prices

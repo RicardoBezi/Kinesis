@@ -26,6 +26,7 @@ from kinesis.errors import KinesisError, SelectionInvalid
 from kinesis.jobs.pipeline import ANALYSIS_NODES, JobContext, build_repair_dag, error_info, now
 from kinesis.jobs.runner import JobRunner
 from kinesis.jobs.specs import export_spec
+from kinesis.jobs.stats import compute_product_stats
 from kinesis.jobs.worker_io import run_worker, spec_paths
 from kinesis.observability.context import bind
 from kinesis.observability.metrics import CANDIDATES, JOB_DURATION, NODE_DURATION
@@ -47,6 +48,7 @@ from kinesis.schemas import (
     EventPage,
     HumanDecision,
     JobStatus,
+    ProductStats,
     RepairCandidate,
     RepairJob,
     SceneRef,
@@ -475,6 +477,15 @@ class JobService:
         if job is None:
             raise not_found(ErrorCode.JOB_NOT_FOUND, "job")
         return job
+
+    async def list_jobs(self, limit: int, before: str | None) -> list[RepairJob]:
+        return await self.store.list_jobs(limit=limit, before=before)
+
+    async def product_stats(self) -> ProductStats:
+        jobs = await self.store.list_jobs(limit=1_000_000)
+        return compute_product_stats(
+            jobs, await self.store.list_decisions(), await self.store.costs()
+        )
 
     async def events(self, job_id: str, after_seq: int, limit: int) -> EventPage:
         await self.get_job(job_id)

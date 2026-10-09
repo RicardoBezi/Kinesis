@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS events (
     job_id TEXT NOT NULL, seq INTEGER NOT NULL, dedupe_key TEXT, data TEXT NOT NULL,
     PRIMARY KEY (job_id, seq), UNIQUE (job_id, dedupe_key));
 CREATE TABLE IF NOT EXISTS decisions (job_id TEXT PRIMARY KEY, data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS job_costs (
+    job_id TEXT PRIMARY KEY, usd REAL NOT NULL DEFAULT 0,
+    unpriced_calls INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS artifacts (
     artifact_id TEXT PRIMARY KEY, job_id TEXT NOT NULL, relpath TEXT NOT NULL,
     data TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -266,6 +269,43 @@ class SqliteJobStore:
         def op(c: sqlite3.Connection) -> list[str]:
             rows = c.execute("SELECT job_id FROM jobs WHERE status = ?", (status.value,)).fetchall()
             return [r["job_id"] for r in rows]
+
+        return await self.db.tx(op)
+
+    async def list_jobs(self, *, limit: int, before: str | None = None) -> list[RepairJob]:
+        """Newest first (ids sort by creation time); ``before`` pages backwards."""
+
+        def op(c: sqlite3.Connection) -> list[RepairJob]:
+            if before is None:
+                rows = c.execute(
+                    "SELECT * FROM jobs ORDER BY job_id DESC LIMIT ?", (limit,)
+                ).fetchall()
+            else:
+                rows = c.execute(
+                    "SELECT * FROM jobs WHERE job_id < ? ORDER BY job_id DESC LIMIT ?",
+                    (before, limit),
+                ).fetchall()
+            return [_job_from_row(r) for r in rows]
+
+        return await self.db.tx(op)
+
+    async def add_cost(self, job_id: str, usd: float | None) -> None:
+        """Accumulate model cost for a job; calls without a known price are counted."""
+
+        def op(c: sqlite3.Connection) -> None:
+            c.execute(
+                "INSERT INTO job_costs (job_id, usd, unpriced_calls) VALUES (?, ?, ?) "
+                "ON CONFLICT(job_id) DO UPDATE SET usd = usd + excluded.usd, "
+                "unpriced_calls = unpriced_calls + excluded.unpriced_calls",
+                (job_id, usd or 0.0, 1 if usd is None else 0),
+            )
+
+        await self.db.tx(op)
+
+    async def costs(self) -> dict[str, tuple[float, int]]:
+        def op(c: sqlite3.Connection) -> dict[str, tuple[float, int]]:
+            rows = c.execute("SELECT job_id, usd, unpriced_calls FROM job_costs").fetchall()
+            return {r["job_id"]: (float(r["usd"]), int(r["unpriced_calls"])) for r in rows}
 
         return await self.db.tx(op)
 

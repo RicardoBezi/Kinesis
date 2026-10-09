@@ -33,6 +33,7 @@ The server inspects the scene headlessly (armatures, bones, frame range, fps) be
 | Method | Path | Success | Errors |
 |---|---|---|---|
 | POST | `/v1/jobs` | 202 `RepairJob`; 200 on idempotent replay | 404 `SCENE_NOT_FOUND`, 409 `IDEMPOTENCY_CONFLICT`, 422 `ARMATURE_NOT_FOUND` / `BONE_NOT_FOUND` / `INVALID_FRAME_RANGE` / `UNSUPPORTED_REPAIR_TYPE` / `UNSUPPORTED_RIG` / `VALIDATION_ERROR` |
+| GET | `/v1/jobs?limit=50&before=<job_id>` | 200 `RepairJob[]`, newest first | 422 |
 | GET | `/v1/jobs/{job_id}` | 200 `RepairJob` | 404 |
 | GET | `/v1/jobs/{job_id}/events?after_seq=0&limit=100` | 200 `EventPage` | 404 |
 | GET | `/v1/jobs/{job_id}/defect` | 200 `DefectReport` | 404, 409 `NOT_READY` |
@@ -124,7 +125,7 @@ Artifacts are referenced by `ArtifactReference.uri`.
 
 ## Implementation status
 
-Every route works except `/v1/stats/product` (Phase 5), which returns a `501 NOT_IMPLEMENTED` Problem. `tests/unit/test_api_contract.py` pins the contracts, and `tests/integration/test_api_jobs.py` covers their behaviour.
+Every route is implemented. `GET /v1/jobs` (the job list) was added in Phase 5 for the review client. `tests/unit/test_api_contract.py` pins the contracts, and `tests/integration/test_api_jobs.py` covers their behaviour.
 
 Two details that the tables above leave open:
 - **Choosing a FAILED candidate** returns `422 VALIDATION_ERROR`.

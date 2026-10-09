@@ -725,6 +725,7 @@ async def _plan(ctx: JobContext, analysis: Analysis, scene_range: tuple[int, int
         )
         return default_plan(job.selection, scope, reason)
     record_model_call("plan", result)
+    await record_cost(ctx, result)
     plan = result.value or default_plan(job.selection, scope, "provider returned no plan")
     if result.status is ResultStatus.INVALID:
         await ctx.emit(
@@ -767,9 +768,16 @@ async def _evaluate_one(
         log.warning("evaluate.provider_failed", extra={"error": describe(exc)})
         return None
     record_model_call("evaluate", result)
+    await record_cost(ctx, result)
     if not result.ok:
         log.warning("evaluate.invalid_judgement", extra={"reasons": list(result.reasons)[:5]})
     return result.value if result.ok else None
+
+
+async def record_cost(ctx: JobContext, result: ProviderResult[Any]) -> None:
+    """Per-job model cost for the product metric (null-provider calls are free and skipped)."""
+    if result.model_id is not None:
+        await ctx.service.store.add_cost(ctx.job_id, result.cost_usd)
 
 
 def record_model_call(task: str, result: ProviderResult[Any]) -> None:

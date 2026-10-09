@@ -106,12 +106,10 @@ def test_provider_health_reports_every_component(client: TestClient) -> None:
     assert [c["name"] for c in body["components"]] == ["model_provider", "redis", "blender"]
 
 
-@pytest.mark.parametrize("path", ["/v1/stats/product"])
-def test_remaining_stubs_return_problem_501(client: TestClient, path: str) -> None:
-    r = client.get(path)
-    assert r.status_code == 501, r.text
-    assert r.headers["content-type"].startswith("application/problem+json")
-    assert r.json()["code"] == "NOT_IMPLEMENTED"
+def test_product_stats_on_an_empty_store(client: TestClient) -> None:
+    r = client.get("/v1/stats/product")
+    assert r.status_code == 200
+    assert r.json()["jobs_total"] == 0
 
 
 @pytest.mark.parametrize(

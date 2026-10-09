@@ -57,6 +57,21 @@ async def create_job(
 
 
 @router.get(
+    "",
+    response_model=list[RepairJob],
+    responses=problem_responses(),
+    summary="List jobs, newest first",
+    description="Pages backwards with `before=<job_id>` (ids sort by creation time).",
+)
+async def list_jobs(
+    service: Service,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    before: Annotated[str | None, Query(pattern=r"^[a-z0-9][a-z0-9_-]{5,63}$")] = None,
+) -> list[RepairJob]:
+    return await service.list_jobs(limit, before)
+
+
+@router.get(
     "/{job_id}",
     response_model=RepairJob,
     responses=problem_responses(404),

@@ -12,7 +12,6 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from kinesis import __version__
 from kinesis.api.deps import get_service
-from kinesis.api.errors import not_implemented, problem_responses
 from kinesis.jobs.service import JobService
 from kinesis.schemas import ComponentHealth, HealthReport, ProductStats
 
@@ -84,8 +83,7 @@ async def metrics() -> Response:
 @router.get(
     "/stats/product",
     response_model=ProductStats,
-    responses=problem_responses(501),
     summary="Product metrics (acceptance, agreement, slip reduction, cost)",
 )
-async def product_stats() -> ProductStats:
-    raise not_implemented("Phase 5")
+async def product_stats(service: Annotated[JobService, Depends(get_service)]) -> ProductStats:
+    return await service.product_stats()
