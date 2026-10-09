@@ -1,37 +1,23 @@
 name: blender
 
-# Headless Blender 4.5 LTS integration and golden tests. These are not yet a required gate:
-# spike S3 must first show that GPU-less rendering is reliable on hosted runners
-# (docs/DEPLOYMENT.md#ci).
+# Headless Blender 4.5 LTS integration and golden tests.
+#
+# The workflow always runs (no workflow-level `paths:`), so its `blender-gate` check always
+# reports and can be required by branch protection without deadlocking PRs that do not touch
+# Blender code. The expensive `blender` job runs only when relevant paths changed, nightly,
+# or on manual dispatch; `blender-gate` passes when it succeeded or was skipped.
 
 on:
   push:
     branches: [main]
-    paths:
-      - "blender/**"
-      - "backend/src/kinesis/analysis/**"
-      - "backend/src/kinesis/repair/**"
-      - "backend/src/kinesis/evaluation/**"
-      - "backend/src/kinesis/schemas/**"
-      - "tests/integration/**"
-      - "tests/golden/**"
-      - "spikes/s[123]_*.py"
-      - "scripts/tasks.py"
-      - ".github/workflows/blender.yml"
   pull_request:
-    paths:
-      - "blender/**"
-      - "backend/src/kinesis/analysis/**"
-      - "backend/src/kinesis/repair/**"
-      - "backend/src/kinesis/evaluation/**"
-      - "backend/src/kinesis/schemas/**"
-      - "tests/integration/**"
-      - "tests/golden/**"
-      - "spikes/s[123]_*.py"
-      - "scripts/tasks.py"
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: blender-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -41,7 +27,36 @@ env:
   BLENDER_SHA256: "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3"
 
 jobs:
+  changes:
+    name: blender paths
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      blender: ${{ steps.filter.outputs.blender }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            blender:
+              - "blender/**"
+              - "backend/src/kinesis/**"
+              - "tests/integration/**"
+              - "tests/golden/**"
+              - "spikes/s[123]_*.py"
+              - "scripts/tasks.py"
+              - "infra/docker/blender-worker.Dockerfile"
+              - ".github/workflows/blender.yml"
+
   blender:
+    needs: changes
+    if: >-
+      needs.changes.outputs.blender == 'true'
+      || github.event_name == 'schedule'
+      || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -87,12 +102,33 @@ jobs:
           "$KINESIS_BLENDER_BIN" --version
           uv run pytest -m blender
 
+  # The required check. Passes when the blender job succeeded or was skipped (no relevant
+  # changes); fails when it failed or was cancelled, or when path detection failed.
+  blender-gate:
+    name: blender-gate
+    if: always()
+    needs: [changes, blender]
+    runs-on: ubuntu-latest
+    steps:
+      - name: evaluate
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          BLENDER: ${{ needs.blender.result }}
+        run: |
+          echo "changes=$CHANGES blender=$BLENDER"
+          [ "$CHANGES" = "success" ] || exit 1
+          case "$BLENDER" in success|skipped) exit 0 ;; *) exit 1 ;; esac
+
   # Phase 6: the containerized worker must give the same golden results as host Blender.
-  # Nightly / manual / when the image changes, because the image is ~2 GB to build.
+  # Nightly and manual only (the image is ~2 GB to build); not part of the merge gate.
+  # A failure opens (or comments on) a tracking issue.
   container:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -102,3 +138,16 @@ jobs:
         run: uv run task worker-image
       - name: container parity test
         run: uv run task test-container -s
+      - name: report failure as an issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Nightly container parity failed"
+          existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Failed again: $RUN_URL"
+          else
+            gh issue create --title "$title" --body "The containerized worker no longer matches the golden results: $RUN_URL"
+          fi
