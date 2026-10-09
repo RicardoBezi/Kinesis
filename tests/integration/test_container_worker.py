@@ -46,6 +46,13 @@ pytestmark = [
 ]
 
 
+def _dump_logs(root: Path) -> None:
+    """Worker logs (docker's own errors included) are the only evidence when a run fails."""
+    for log in sorted(root.rglob("*.log")):
+        print(f"--- {log.relative_to(root)}
+{log.read_text(errors='replace')[-3000:]}")
+
+
 async def test_container_job_matches_golden_results(tmp_path: Path) -> None:
     from conftest import chunks, job_request
 
@@ -59,12 +66,18 @@ async def test_container_job_matches_golden_results(tmp_path: Path) -> None:
     )
     assert (await service.runner.health_check())[0]
     started = time.monotonic()
-    scene = await service.upload_scene(chunks(FIXTURE.read_bytes(), 1 << 20))
+    try:
+        scene = await service.upload_scene(chunks(FIXTURE.read_bytes(), 1 << 20))
+    except Exception:
+        _dump_logs(tmp_path)
+        raise
     assert scene.blender_version.startswith("4.5")
     job, _ = await service.create_job(job_request(scene_id=scene.scene_id), "container-0001")
     await service.wait_idle()
     job = await service.get_job(job.job_id)
     elapsed = time.monotonic() - started
+    if job.status is not JobStatus.AWAITING_DECISION:
+        _dump_logs(tmp_path)
     assert job.status is JobStatus.AWAITING_DECISION, job.error
 
     worst = job.defect.worst if job.defect else None
