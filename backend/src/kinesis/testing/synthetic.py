@@ -120,20 +120,74 @@ def rounded_ramp(x: float, corner: float) -> float:
     return vmax * (x - corner / 2)
 
 
-def defect_offset_x(frame: int) -> float:
-    """``Δx(f)`` added to the left ankle target."""
-    if frame < DEFECT_START or frame > DEFECT_DECAY_END:
-        return 0.0
-    if frame <= DEFECT_END:
-        span = DEFECT_END - DEFECT_START
-        return DEFECT_SLIDE_M * rounded_ramp(
-            (frame - DEFECT_START) / span, DEFECT_CORNER_FRAMES / span
-        )
-    if frame <= DEFECT_HOLD_END:
-        return DEFECT_SLIDE_M
-    return DEFECT_SLIDE_M * (
-        1 - smoothstep((frame - DEFECT_HOLD_END) / (DEFECT_DECAY_END - DEFECT_HOLD_END))
+@dataclass(frozen=True)
+class Defect:
+    """An injected slide on one foot's ankle target: ramps in over ``start..end``, holds until
+    ``hold_end`` (lift-off), decays during the swing until ``decay_end``."""
+
+    side: str = "L"
+    start: int = DEFECT_START
+    end: int = DEFECT_END
+    hold_end: int = DEFECT_HOLD_END
+    decay_end: int = DEFECT_DECAY_END
+    dx: float = DEFECT_SLIDE_M
+    dy: float = 0.0
+    corner_frames: int = DEFECT_CORNER_FRAMES
+
+    @property
+    def magnitude_m(self) -> float:
+        return math.hypot(self.dx, self.dy)
+
+    def weight(self, frame: int) -> float:
+        if frame < self.start or frame > self.decay_end:
+            return 0.0
+        if frame <= self.end:
+            span = self.end - self.start
+            return rounded_ramp((frame - self.start) / span, self.corner_frames / span)
+        if frame <= self.hold_end:
+            return 1.0
+        return 1 - smoothstep((frame - self.hold_end) / (self.decay_end - self.hold_end))
+
+    def offset(self, frame: int) -> tuple[float, float]:
+        w = self.weight(frame)
+        return (self.dx * w, self.dy * w)
+
+
+CANONICAL_DEFECT = Defect()
+
+
+@dataclass(frozen=True)
+class Variant:
+    """A benchmark scene: the canonical motion with one injected defect and its selection."""
+
+    name: str
+    defect: Defect
+    bone: str
+    selection: tuple[int, int]
+
+
+VARIANTS: dict[str, Variant] = {
+    v.name: v
+    for v in (
+        Variant("foot_slide_v1", CANONICAL_DEFECT, "foot.L", (45, 90)),
+        # 3 cm backward (+Y: the character faces -Y), near the MINOR/MAJOR boundary.
+        Variant("small_backward", Defect(dx=0.0, dy=0.03), "foot.L", (45, 90)),
+        # The right foot, planted on frames 1-64; the slide decays during its swing (65-84).
+        Variant(
+            "right_foot",
+            Defect(side="R", start=20, end=50, hold_end=64, decay_end=74, dx=-0.06),
+            "foot.R",
+            (15, 60),
+        ),
+        # A slower diagonal slide across almost the whole contact.
+        Variant("long_diagonal", Defect(start=42, end=88, dx=0.06, dy=-0.06), "foot.L", (45, 90)),
     )
+}
+
+
+def defect_offset_x(frame: int) -> float:
+    """``Δx(f)`` added to the left ankle target of the canonical fixture."""
+    return CANONICAL_DEFECT.offset(frame)[0]
 
 
 def pelvis_position(frame: int) -> tuple[float, float, float]:
@@ -164,13 +218,22 @@ def ankle_target(
     return (x, y, ANKLE_PLANTED_Z)
 
 
-def left_ankle_target(frame: int, *, defect: bool = True) -> tuple[float, float, float]:
+def left_ankle_target(
+    frame: int, *, defect: bool = True, injected: Defect | None = CANONICAL_DEFECT
+) -> tuple[float, float, float]:
     x, y, z = ankle_target(LEFT_STEPS, frame)
-    return (x + (defect_offset_x(frame) if defect else 0.0), y, z)
+    if defect and injected is not None and injected.side == "L":
+        dx, dy = injected.offset(frame)
+        return (x + dx, y + dy, z)
+    return (x, y, z)
 
 
-def right_ankle_target(frame: int) -> tuple[float, float, float]:
-    return ankle_target(RIGHT_STEPS, frame)
+def right_ankle_target(frame: int, *, injected: Defect | None = None) -> tuple[float, float, float]:
+    x, y, z = ankle_target(RIGHT_STEPS, frame)
+    if injected is not None and injected.side == "R":
+        dx, dy = injected.offset(frame)
+        return (x + dx, y + dy, z)
+    return (x, y, z)
 
 
 def shoulder_pitch_rad(frame: int) -> float:
@@ -222,6 +285,15 @@ def fixture_skeleton() -> Skeleton:
 
 def foot_slide_v1(*, defect: bool = True) -> SyntheticScene:
     """The canonical fixture over frames 1-120. ``defect=False`` gives the clean motion."""
+    return build_scene(CANONICAL_DEFECT if defect else None)
+
+
+def variant_scene(name: str) -> SyntheticScene:
+    return build_scene(VARIANTS[name].defect)
+
+
+def build_scene(injected: Defect | None) -> SyntheticScene:
+    """The canonical motion with ``injected`` (or no) defect."""
     skel = fixture_skeleton()
     frames = range(FRAME_START, FRAME_END + 1)
     n = len(frames)
@@ -259,8 +331,8 @@ def foot_slide_v1(*, defect: bool = True) -> SyntheticScene:
     world = forward_kinematics(skel, basis)
     unreachable = 0
     targets = {
-        "L": [left_ankle_target(f, defect=defect) for f in frames],
-        "R": [right_ankle_target(f) for f in frames],
+        "L": [left_ankle_target(f, injected=injected) for f in frames],
+        "R": [right_ankle_target(f, injected=injected) for f in frames],
     }
     for side, (thigh, shin, foot) in LEG_CHAINS.items():
         l1, l2 = skel.lengths[thigh], skel.lengths[shin]
@@ -313,7 +385,10 @@ __all__ = [
     "FRAME_START",
     "LEG_CHAINS",
     "RIG_BONES",
+    "VARIANTS",
+    "Defect",
     "SyntheticScene",
+    "build_scene",
     "defect_offset_x",
     "fixture_skeleton",
     "foot_slide_v1",
@@ -322,4 +397,5 @@ __all__ = [
     "right_ankle_target",
     "rounded_ramp",
     "smoothstep",
+    "variant_scene",
 ]

@@ -25,6 +25,13 @@ The MVP handles one repair class: **foot-contact / foot-sliding repair in Blende
 - **Phase 4: Nebius / NVIDIA (complete).** Nemotron 3 Super plans the A/B parameters, and a vision model reviews the rendered frames. Both run through Token Factory, behind the same validation gate and fallbacks. Live calls cost about $0.002 per repair. See [docs/PHASE4.md](docs/PHASE4.md).
 - **Phase 5: review client (complete).** A Compose Desktop client shows Original, A and B in sync, with the metrics and the model's view, and records the animator's decision. See [docs/PHASE5.md](docs/PHASE5.md).
 - **Phase 6: serverless (implemented; live runs pending).** The containerized Blender worker gives the same golden results as host Blender. The Nebius Serverless Jobs runners (one job per step, or one session per repair) are contract-tested against the documented API. Live runs wait on a Nebius account. See [docs/PHASE6.md](docs/PHASE6.md).
+- **Evidence:** [docs/BENCHMARKS.md](docs/BENCHMARKS.md) and [docs/SPECS.md](docs/SPECS.md) are generated from real runs. They cover:
+  - a 4-scene suite on host Blender and in the container;
+  - the vision-model bake-off;
+  - model cost per job;
+  - the test inventory.
+
+  Reproduce them with `uv run task bench`, `uv run task vlm-bakeoff` and `uv run task specs`. `uv run task demo` runs the scripted end-to-end demo.
 
 ![Kinesis review client](docs/img/review-client.png)
 

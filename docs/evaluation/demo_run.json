@@ -1,0 +1,98 @@
+{
+  "finished": "2026-10-09 03:03:43",
+  "environment": {
+    "commit": "cd33daf",
+    "dirty": true,
+    "os": "Windows 11",
+    "cpu": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "cpu_count": 16,
+    "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "python": "3.12.12"
+  },
+  "provider": "token_factory",
+  "job_id": "job_01m4fqhnpx2wpfj3nakw1d3ep5",
+  "status": "COMPLETED",
+  "latency_s": {
+    "upload_to_review": 48.462,
+    "inspect": 0.592,
+    "export": 0.606,
+    "per_node": {
+      "validate_input": 0.001,
+      "extract_scope": 0.638,
+      "contact_analysis": 0.035,
+      "motion_analysis": 0.011,
+      "constraint_check": 0.011,
+      "defect_report": 0.002,
+      "plan_repair": 4.809,
+      "render_original": 4.207,
+      "generate_A": 0.03,
+      "generate_B": 0.051,
+      "apply_render_A": 4.3,
+      "apply_render_B": 4.301,
+      "metrics_A": 0.021,
+      "metrics_B": 0.015,
+      "evaluate": 37.98,
+      "apply_selected": 0.601
+    }
+  },
+  "defect": {
+    "interval": [
+      39,
+      91
+    ],
+    "planted_displacement_cm": 10.002,
+    "severity": "MAJOR"
+  },
+  "plan": {
+    "source": "MODEL",
+    "model_id": "nvidia/nemotron-3-super-120b-a12b"
+  },
+  "candidates": {
+    "A": {
+      "slip_before_cm": 10.002,
+      "slip_after_cm": 0.0,
+      "slip_reduction_pct": 100.0,
+      "collateral_max_cm": 0.0,
+      "outside_window_max_cm": 0.0,
+      "jerk_rms_ratio": 1.168
+    },
+    "B": {
+      "slip_before_cm": 10.002,
+      "slip_after_cm": 1.119,
+      "slip_reduction_pct": 88.81,
+      "collateral_max_cm": 0.0,
+      "outside_window_max_cm": 0.0,
+      "jerk_rms_ratio": 1.38
+    }
+  },
+  "model_calls": [
+    {
+      "task": "evaluate",
+      "model": "zai-org/GLM-5.3-Flash",
+      "prompt_tokens": 4002,
+      "completion_tokens": 862,
+      "latency_ms": 11891
+    },
+    {
+      "task": "evaluate",
+      "model": "zai-org/GLM-5.3-Flash",
+      "prompt_tokens": 4002,
+      "completion_tokens": 820,
+      "latency_ms": 37969
+    }
+  ],
+  "recommended": "A",
+  "decision": "A",
+  "original_action_untouched": true,
+  "output": {
+    "artifact_id": "art_01m4fqk51gaqt5a6w5mzpsbq7q",
+    "kind": "OUTPUT_BLEND",
+    "media_type": "application/octet-stream",
+    "sha256": "49c238409c248f9f06ed7a10a855ab183ef443352fd916ab66f3580a03cb96a0",
+    "size_bytes": 1478976,
+    "frame_count": null,
+    "first_frame": null,
+    "frame_step": null,
+    "uri": "/v1/artifacts/art_01m4fqk51gaqt5a6w5mzpsbq7q"
+  }
+}

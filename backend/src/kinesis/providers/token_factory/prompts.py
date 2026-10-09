@@ -19,7 +19,7 @@ from typing import Any
 
 from kinesis.providers.base import EvaluationRequest, PlanRequest
 
-PLANNER_PROMPT_VERSION = "planner/1"
+PLANNER_PROMPT_VERSION = "planner/2"
 EVALUATOR_PROMPT_VERSION = "evaluator/1"
 MAX_IMAGES_PER_REQUEST = 10  # spike S4: MiniCPM-V-4.5 rejects more with HTTP 400
 
@@ -127,9 +127,11 @@ Rules:
 - Reply with one JSON object that matches the provided schema. No prose, no markdown.
 - Keep repair_type, target_bones, frame range and context frames equal to the selection you \
 are given unless you have a concrete reason; never name bones or frames outside it.
-- Make A and B meaningfully different: A is typically a strong lock (lock_strength near 1, \
-ONSET anchor, short blend); B preserves more of the original motion (lower strength, MEAN \
-anchor, longer blend, smoothing). Adapt them to the measured defect.
+- Both candidates must fix the slide: lock_strength between 0.8 and 1.0 for A and for B \
+(a weaker lock leaves visible sliding and the plan is rejected). Make them differ in HOW they \
+fix it: A is a strong, crisp lock (lock_strength near 1, ONSET anchor, short blend, yaw lock); \
+B is a softer, more natural fix (lock_strength about 0.85, MEAN anchor, longer blend, \
+smoothing). Adapt them to the measured defect.
 - Parameter meanings: lock_strength = fraction of slip removed; anchor_mode ONSET locks to \
 the touchdown position, MEAN to the mean planted position; blend_frames = smooth ramp \
 outside the planted interval; tolerance_cm = residual below which the foot snaps to the \

@@ -60,6 +60,9 @@ known-first-party = ["kinesis", "tasks"]
 "scripts/tasks.py" = ["S603", "S607"]  # fixed-argv subprocess calls are the point of this file
 "tests/**" = ["S105", "S106"]
 "scripts/vlm_bakeoff.py" = ["E501"]  # report tables and trial records read better unwrapped
+"scripts/bench.py" = ["E501"]  # report tables read better unwrapped
+"scripts/demo.py" = ["E501"]  # narrated output lines
+"scripts/specs.py" = ["E501"]  # long generated sentences
 
 # ---------------------------------------------------------------- mypy
 [tool.mypy]

@@ -66,3 +66,11 @@ def test_gated_candidates_are_never_recommended() -> None:
     visual = {"a" * 16: judged(A, 5), "b" * 16: judged(B, 1)}
     assert recommend(ranking, visual, visual_ok=True).label is B
     assert recommend([rank(A, None, gated=True)], {}, visual_ok=False).label is None
+
+
+def test_a_visual_tie_is_not_reported_as_disagreement() -> None:
+    ranking = [rank(A, 0.82), rank(B, 0.76)]
+    visual = {"a" * 16: judged(A, 4), "b" * 16: judged(B, 4)}
+    rec = recommend(ranking, visual, visual_ok=True)
+    assert rec.label is A
+    assert "favour" not in rec.reason  # identical visual scores: no one is favoured
