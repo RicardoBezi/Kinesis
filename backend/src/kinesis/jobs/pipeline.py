@@ -22,7 +22,6 @@ from kinesis.analysis.extraction import ExtractedMotion, detect_from_extract, fo
 from kinesis.analysis.scope import resolve_temporal
 from kinesis.errors import KinesisError, ProviderError, WorkerOutputInvalid
 from kinesis.evaluation.metrics import (
-    SCORING_WEIGHTS,
     MetricContext,
     Samples,
     compute_metrics,
@@ -30,6 +29,7 @@ from kinesis.evaluation.metrics import (
     knee_flexion_deg,
     rank_candidates,
 )
+from kinesis.evaluation.recommend import recommend
 from kinesis.jobs.specs import candidate_apply_spec, original_render_spec
 from kinesis.jobs.worker_io import run_worker, spec_paths
 from kinesis.observability.metrics import (
@@ -807,12 +807,12 @@ async def _evaluate(
                 visual.append(value)
         ok = len(visual) == len(scored)
         evaluator_status = EvaluatorStatus.OK if ok else EvaluatorStatus.DEGRADED
-    best = next((r for r in ranking if not r.gated), None)
-    reason = (
-        f"Candidate {best.label.value} has the highest objective score ({best.score:.2f})."
-        if best is not None and best.score is not None
-        else "Every candidate is gated by a preservation check; review carefully."
+    rec = recommend(
+        ranking,
+        {v.candidate_id: v for v in visual},
+        visual_ok=evaluator_status is EvaluatorStatus.OK,
     )
+    reason = rec.reason
     if evaluator_status is EvaluatorStatus.DEGRADED:
         reason += (
             " Visual evaluation was unavailable for some candidates; ranking is objective only."
@@ -820,10 +820,10 @@ async def _evaluate(
     return EvaluationReport(
         objective_ranking=ranking,
         visual=tuple(visual),
-        recommended=best.label if best is not None else None,
+        recommended=rec.label,
         recommendation_reason=reason[:2000],
         evaluator_status=evaluator_status,
-        scoring_weights=dict(SCORING_WEIGHTS),
+        scoring_weights=rec.weights,
     )
 
 
