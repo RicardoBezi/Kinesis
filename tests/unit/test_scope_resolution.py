@@ -67,3 +67,21 @@ def test_nested_targets_are_unsupported() -> None:
 def test_cyclic_hierarchy_is_unsupported() -> None:
     with pytest.raises(SelectionInvalid, match="cycle"):
         resolve_skeletal("Rig", ("c",), {"a": "c", "b": "a", "c": "b"})
+
+
+def test_toe_leaf_bones_join_the_chain() -> None:
+    """Quaternius UAL / UE-style legs end in ball -> ball_leaf: the leaf follows the foot, so it
+    belongs to the chain (not keyed, and not counted as collateral motion)."""
+    parents = {
+        "root": None,
+        "pelvis": "root",
+        "thigh_l": "pelvis",
+        "calf_l": "thigh_l",
+        "foot_l": "calf_l",
+        "ball_l": "foot_l",
+        "ball_leaf_l": "ball_l",
+    }
+    s = resolve_skeletal("Armature", ("foot_l",), parents)
+    assert s.chain_bones == ("thigh_l", "calf_l", "foot_l", "ball_l", "ball_leaf_l")
+    assert s.keyable_bones == ("thigh_l", "calf_l", "foot_l")
+    assert s.context_bones == ("pelvis", "root")
