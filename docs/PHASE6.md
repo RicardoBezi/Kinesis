@@ -22,6 +22,8 @@
 - the job directory as the only mount, and that mount is the only data the worker sees;
 - `no-new-privileges`, with CPU and memory caps.
 
+The CPU cap defaults to `min(4, host CPUs)`, because Docker rejects a larger cap (hosted runners have 2). When `docker run` itself fails (exit 125–127), Docker's one-line reason goes into the error message.
+
 On cancel or timeout the runner force-removes the container. Killing only the `docker` CLI would leave Blender running. This is the same process boundary a serverless job has, so the image is what Nebius would run.
 
 ### Local versus container (workstation, 2026-10-09)
@@ -31,6 +33,7 @@ On cancel or timeout the runner force-removes the container. Killing only the `d
 | Host Blender (`LocalJobRunner`) | 8.1 s | Renders on the GPU (Workbench, about 0.06 s/frame) |
 | Container (`ContainerJobRunner`, 4 CPUs) | 31.0 s | Renders on the CPU through Mesa llvmpipe; the GitHub CPU runner measured about 0.42 s/frame in S3 |
 | Container start-up overhead | about 0.45 s per worker command | `docker run` + `blender --version`: 0.55–0.62 s, against 0.12–0.14 s on the host |
+| Container on GitHub CI (2 CPUs) | 61.5 s | Same golden results; the nightly `container` job in `blender.yml` |
 
 A job runs 6 worker commands, so start-up adds about 3 s. The rest of the gap comes from rendering about 250 frames (the A, B and original crops plus context frames) on the CPU. **What this means for Nebius:**
 - a GPU instance type would recover most of that time;
