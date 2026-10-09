@@ -4,7 +4,9 @@
 
 Every number comes from a real run of the real pipeline on this machine:
 - scenes: the canonical fixture and its variants (``kinesis.testing.synthetic.VARIANTS``), each
-  built into a .blend by Blender 4.5 (the canonical one is the committed fixture);
+  built into a .blend by Blender 4.5 (the canonical one is the committed fixture), plus
+  ``ual_walk_slide`` (a Quaternius UAL walk with a hand-made slide) when its glTF source is
+  present (``uv run task ual-scene``);
 - runners: host Blender (``local``) and the worker image (``container4`` / ``container2`` CPUs);
 - models: the ``local`` pass uses Token Factory (planner + vision; about $0.003 per job) unless
   ``--no-models``; container passes use the null provider (timings only, no spend);
@@ -20,6 +22,7 @@ import statistics
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -48,11 +51,46 @@ STAGES = (
     "evaluate",
 )
 ACCEPT_CM = 1.0
+UAL_GLB = Path(
+    os.environ.get("KINESIS_UAL_GLB")
+    or ROOT
+    / "var"
+    / "ual"
+    / "Universal Animation Library[Standard]"
+    / "Unreal-Godot"
+    / "UAL1_Standard_RM.glb"
+)
+
+
+@dataclass(frozen=True)
+class SceneSpec:
+    armature: str
+    bone: str
+    selection: tuple[int, int]
+    builder: str  # script under blender/fixtures/
+
+
+SCENES: dict[str, SceneSpec] = {
+    **{
+        name: SceneSpec("Rig", v.bone, v.selection, "build_fixture.py")
+        for name, v in VARIANTS.items()
+    },
+    # Rig, slide and frames: blender/fixtures/build_ual_walk.py (the slide is on frames 66-88).
+    "ual_walk_slide": SceneSpec("Armature", "foot_l", (62, 80), "build_ual_walk.py"),
+}
+
+
+def default_scenes() -> list[str]:
+    return [n for n in SCENES if n != "ual_walk_slide" or UAL_GLB.is_file()]
 
 
 def blender_bin() -> str:
     found = os.environ.get("KINESIS_BLENDER_BIN") or next(
-        (str(p) for p in (ROOT / ".tools").glob("blender-4.5.14*/blender*") if p.stem == "blender"),
+        (
+            str(p)
+            for p in (ROOT / ".tools").glob("blender-4.5.14*/blender*")
+            if p.name in ("blender", "blender.exe") and p.is_file()
+        ),
         "",
     )
     if not found:
@@ -68,6 +106,8 @@ def build_scenes(names: list[str]) -> dict[str, Path]:
             out[name] = FIXTURE
             continue
         path = SCENES_DIR / f"{name}.blend"
+        spec = SCENES[name]
+        extra = ["--glb", str(UAL_GLB)] if name == "ual_walk_slide" else ["--variant", name]
         proc = subprocess.run(  # noqa: S603 - fixed argv
             [
                 blender_bin(),
@@ -77,12 +117,11 @@ def build_scenes(names: list[str]) -> dict[str, Path]:
                 "--python-exit-code",
                 "3",
                 "--python",
-                str(ROOT / "blender/fixtures/build_fixture.py"),
+                str(ROOT / "blender" / "fixtures" / spec.builder),
                 "--",
                 "--out",
                 str(path),
-                "--variant",
-                name,
+                *extra,
             ],
             capture_output=True,
             check=False,
@@ -174,9 +213,9 @@ async def run_pass(
     records = []
     try:
         for name, blend in scenes.items():
-            v = VARIANTS[name]
+            v = SCENES[name]
             selection = {
-                "armature": "Rig",
+                "armature": v.armature,
                 "target_bones": [v.bone],
                 "temporal": {"frame_start": v.selection[0], "frame_end": v.selection[1]},
             }
@@ -280,6 +319,14 @@ def markdown(data: dict[str, Any]) -> str:
         "  - `local`: host Blender 4.5.14, rendering on the GPU when there is one;",
         "  - `container4` / `container2`: the worker image, rendering on CPU (Mesa llvmpipe) with 4 or 2 CPUs.",
         f"- **Models:** the `local` pass {'uses' if data['models'] else 'does not use'} Token Factory, with planner `{data.get('planner_model')}` and vision `{data.get('vision_model')}`. The container passes use the null provider.",
+        "",
+        "## Scenes",
+        "",
+        "- `foot_slide_v1`: the canonical synthetic fixture (10 cm sideways slide on `foot.L`).",
+        "- `small_backward`, `right_foot`, `long_diagonal`: variants of the fixture motion with other injected slides (`kinesis.testing.synthetic.VARIANTS`).",
+        "- `ual_walk_slide` (when present): a real game rig, the Quaternius *Universal Animation Library* mannequin "
+        "(CC0, 65 bones, UE-style names), walking 4 cycles of `Walk_Loop` with root motion; "
+        "an 8 cm sideways slide is added to `foot_l` on frames 66-88 by `blender/fixtures/build_ual_walk.py`.",
         "",
         "## Repair quality per scene",
         "",
@@ -391,7 +438,7 @@ def markdown(data: dict[str, Any]) -> str:
 async def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--runners", default="local,container4,container2")
-    ap.add_argument("--scenes", default=",".join(VARIANTS))
+    ap.add_argument("--scenes", default=",".join(default_scenes()))
     ap.add_argument("--no-models", action="store_true")
     ap.add_argument("--image", default="kinesis-worker:4.5.14")
     args = ap.parse_args(argv)

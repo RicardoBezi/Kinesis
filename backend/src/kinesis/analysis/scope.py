@@ -37,6 +37,16 @@ def _ancestors(bone: str, parents: Mapping[str, str | None]) -> list[str]:
     return out
 
 
+def _descendants(bones: list[str], parents: Mapping[str, str | None]) -> list[str]:
+    """Every descendant of ``bones`` (excluding them), breadth first, sorted per level."""
+    out: list[str] = []
+    level = list(bones)
+    while level:
+        level = sorted(b for b, p in parents.items() if p in level and b not in out)
+        out += level
+    return out
+
+
 def resolve_skeletal(
     armature: str, target_bones: tuple[str, ...], parents: Mapping[str, str | None]
 ) -> SkeletalScope:
@@ -44,7 +54,8 @@ def resolve_skeletal(
 
     ``parents`` maps every bone of the armature to its parent (``None`` for roots).
 
-    - chain: thigh, shin, the target, and the target's direct children (the toe);
+    - chain: thigh, shin, the target, its direct children (the toe), then their descendants
+      (game rigs end the toe with a leaf bone; it follows the foot, so it is not collateral);
     - keyable: thigh, shin and the target (children follow their parent and are not keyed);
     - context: the thigh's ancestors up to the root (read-only; hip position, root motion).
     """
@@ -69,7 +80,7 @@ def resolve_skeletal(
             )
         shin, thigh = ancestors[0], ancestors[1]
         children = sorted(b for b, p in parents.items() if p == target)
-        for bone in (thigh, shin, target, *children):
+        for bone in (thigh, shin, target, *children, *_descendants(children, parents)):
             if bone not in chain:
                 chain.append(bone)
         for bone in (thigh, shin, target):

@@ -28,7 +28,7 @@ Given `target_bones`, for example `["foot.L"]`, and the armature hierarchy:
 
 | Field | Contents | Example |
 |---|---|---|
-| `chain_bones` | Each target, plus its ancestors up to 2 levels above the leg root, plus its direct children | thigh.L, shin.L, foot.L, toe.L |
+| `chain_bones` | Each target, plus its ancestors up to 2 levels above the leg root, plus its direct children and their descendants (for example the `ball_leaf_l` end bone of game rigs) | thigh.L, shin.L, foot.L, toe.L |
 | `context_bones` | The ancestors above the chain up to the armature root. Read-only, used for hip position and root motion | pelvis, root |
 | Keyable bones | The chain minus the end effector's children | thigh.L, shin.L, foot.L. `toe.L` follows its parent and is not keyed |
 

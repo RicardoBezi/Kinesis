@@ -294,6 +294,36 @@ def fixture(_: list[str]) -> int:
     )
 
 
+@task("ual-scene", "Build var/bench/scenes/ual_walk_slide.blend from the Quaternius UAL zip")
+def ual_scene(args: list[str]) -> int:
+    """``uv run task ual-scene -- --zip "<...>/Universal Animation Library[Standard].zip"``.
+
+    Extracts only the root-motion glTF (CC0) into var/ual/ and builds the scene. The asset is
+    never committed; the bench picks the scene up whenever the glTF is present."""
+    import zipfile
+
+    exe = blender_bin()
+    if exe is None:
+        print("Blender not found: run `uv run task setup-blender` or set KINESIS_BLENDER_BIN")
+        return 1
+    member = "Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard_RM.glb"
+    glb = ROOT / "var" / "ual" / member
+    if "--zip" in args:
+        with zipfile.ZipFile(args[args.index("--zip") + 1]) as z:
+            z.extract(member, ROOT / "var" / "ual")
+    if not glb.is_file():
+        print(f"{glb} not found: pass --zip <path to the downloaded Standard zip>")
+        return 1
+    out = ROOT / "var" / "bench" / "scenes" / "ual_walk_slide.blend"
+    script = ROOT / "blender" / "fixtures" / "build_ual_walk.py"
+    return run(
+        [
+            *(exe, "--background", "--factory-startup", "-noaudio", "--python-exit-code", "3"),
+            *("--python", str(script), "--", "--glb", str(glb), "--out", str(out)),
+        ]
+    )
+
+
 @task("models", "List models available from Token Factory for the configured key (spike S4)")
 def models(args: list[str]) -> int:
     return run([sys.executable, str(ROOT / "spikes" / "s4_token_factory.py"), "--list", *args])
