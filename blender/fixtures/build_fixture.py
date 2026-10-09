@@ -50,11 +50,14 @@ RADIUS = {
 }
 
 
-def _args() -> Path:
+def _args() -> tuple[Path, str]:
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     if "--out" not in argv:
-        raise SystemExit("usage: blender -b -P build_fixture.py -- --out <path.blend>")
-    return Path(argv[argv.index("--out") + 1]).resolve()
+        raise SystemExit("usage: blender -b -P build_fixture.py -- --out <path.blend> [--variant NAME]")
+    variant = argv[argv.index("--variant") + 1] if "--variant" in argv else "foot_slide_v1"
+    if variant not in synthetic.VARIANTS:
+        raise SystemExit(f"unknown variant {variant!r}; choose from {sorted(synthetic.VARIANTS)}")
+    return Path(argv[argv.index("--out") + 1]).resolve(), variant
 
 
 def _material(name: str, rgb: tuple[float, float, float]) -> bpy.types.Material:
@@ -225,13 +228,14 @@ def build_camera_and_light(scene: bpy.types.Scene) -> None:
 
 
 def main() -> int:
-    out = _args()
+    out, variant = _args()
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = build_scene()
+    scene["kinesis_fixture"] = variant
     build_floor(scene)
     rig = build_rig(scene)
     build_body(scene, rig)
-    data = synthetic.foot_slide_v1()
+    data = synthetic.variant_scene(variant)
     if data.ik_unreachable_frames:
         raise RuntimeError(f"fixture has {data.ik_unreachable_frames} unreachable IK frames")
     key_motion(rig, data)

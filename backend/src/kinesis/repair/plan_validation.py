@@ -23,6 +23,11 @@ from kinesis.schemas.scope import AnimationSelection, SkeletalScope
 
 SUPPORTED_REPAIR_TYPES = frozenset({RepairType.FOOT_CONTACT})
 
+MIN_MODEL_LOCK_STRENGTH = 0.75
+"""Floor for model-chosen candidates (2026-10-09 benchmark): Nemotron read "B preserves more of
+the original motion" as lock_strength 0.35-0.45, which left 3.4-6.1 cm of slide. Both
+candidates must be real repairs; they differ in anchor, blend and smoothing instead."""
+
 
 @dataclass(frozen=True, slots=True)
 class PlanDecision:
@@ -49,6 +54,12 @@ def semantic_errors(
         errors.append(
             f"frames [{proposal.frame_start}, {proposal.frame_end}] outside context [{lo}, {hi}]"
         )
+    for label, params in sorted(proposal.candidates.items()):
+        if params.lock_strength < MIN_MODEL_LOCK_STRENGTH:
+            errors.append(
+                f"candidate {label.value}: lock_strength {params.lock_strength:g} is below "
+                f"{MIN_MODEL_LOCK_STRENGTH:g} and would leave visible sliding"
+            )
     return errors
 
 

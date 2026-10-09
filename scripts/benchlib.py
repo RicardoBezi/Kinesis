@@ -16,7 +16,7 @@ import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from kinesis.jobs.runner import JobRunner
 from kinesis.jobs.service import JobService, ServiceConfig
@@ -76,7 +76,7 @@ async def run_scene(
     blend: Path,
     selection: dict[str, Any],
     *,
-    decide: DecisionChoice | None = None,
+    decide: DecisionChoice | Literal["recommended"] | None = None,
     key: str | None = None,
 ) -> SceneRun:
     started = time.perf_counter()
@@ -90,6 +90,9 @@ async def run_scene(
     job = await service.get_job(job.job_id)
     wall_s = time.perf_counter() - started
     export_s = None
+    if decide == "recommended":
+        rec = job.evaluation.recommended if job.evaluation else None
+        decide = DecisionChoice(rec.value) if rec is not None else None
     if decide is not None and job.status is JobStatus.AWAITING_DECISION:
         t0 = time.perf_counter()
         await service.decide(job.job_id, DecisionRequest(choice=decide))

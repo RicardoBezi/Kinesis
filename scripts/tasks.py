@@ -204,6 +204,24 @@ def live_nebius_jobs_test(args: list[str]) -> int:
     )
 
 
+@task("demo", "Scripted end-to-end demo on the fixture; writes docs/evaluation/demo_run.json")
+def demo(args: list[str]) -> int:
+    env = {k: v for k, v in dotenv().items() if v and k not in os.environ}
+    exe = blender_bin()
+    if exe:
+        env.setdefault("KINESIS_BLENDER_BIN", exe)
+    return run([sys.executable, str(ROOT / "scripts" / "demo.py"), *args], env=env)
+
+
+@task("bench", "Benchmark the scene suite end to end; writes docs/BENCHMARKS.md (~$0.01 of models)")
+def bench(args: list[str]) -> int:
+    env = {k: v for k, v in dotenv().items() if v and k not in os.environ}
+    exe = blender_bin()
+    if exe:
+        env.setdefault("KINESIS_BLENDER_BIN", exe)
+    return run([sys.executable, str(ROOT / "scripts" / "bench.py"), *args], env=env)
+
+
 @task("vlm-bakeoff", "Vision-model bake-off on real fixture previews (Token Factory, capped $0.30)")
 def vlm_bakeoff(args: list[str]) -> int:
     env = {k: v for k, v in dotenv().items() if v and k not in os.environ}
