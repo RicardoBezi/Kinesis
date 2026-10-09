@@ -28,7 +28,7 @@ RUN curl -fsSL -A "kinesis-build/1.0" \
  && tar -xJf /tmp/blender.tar.xz -C /opt/blender --strip-components=1 \
  && rm /tmp/blender.tar.xz
 
-COPY main.py /opt/kinesis/worker/main.py
+COPY main.py session.py /opt/kinesis/worker/
 
 # Unprivileged; the root filesystem is mounted read-only at run time, so Blender's user config
 # goes to the /tmp tmpfs.

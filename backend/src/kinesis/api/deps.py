@@ -56,14 +56,70 @@ def build_cache(settings: Settings) -> Cache:
     return MemoryCache()
 
 
+def build_nebius_runner(settings: Settings) -> JobRunner:
+    """Design A or B from settings; every missing value is reported at once (fail fast)."""
+    s = settings
+    required = {
+        "NEBIUS_PROJECT_ID": s.nebius_project_id,
+        "NEBIUS_JOB_IMAGE": s.nebius_job_image,
+        "NEBIUS_BUCKET": s.nebius_bucket,
+        "NEBIUS_S3_ACCESS_KEY_ID": s.nebius_s3_access_key_id,
+        "NEBIUS_S3_SECRET_ACCESS_KEY": s.nebius_s3_secret_access_key,
+        "NEBIUS_SERVICE_ACCOUNT_ID": s.nebius_service_account_id,
+        "NEBIUS_AUTH_KEY_ID": s.nebius_auth_key_id,
+        "NEBIUS_AUTH_PEM": s.nebius_auth_pem,
+    }
+    missing = [name for name, value in required.items() if not value]
+    if missing:
+        raise ValueError(f"KINESIS_JOB_RUNNER=nebius needs {', '.join(missing)}")
+    from kinesis.jobs.nebius.api import NebiusJobsClient
+    from kinesis.jobs.nebius.auth import NebiusTokenProvider, ServiceAccountKey
+    from kinesis.jobs.nebius.config import NebiusJobConfig, SpendGuard
+    from kinesis.jobs.nebius.runner import NebiusJobRunner, NebiusSessionRunner
+    from kinesis.jobs.nebius.store import Boto3ObjectStore
+
+    assert s.nebius_s3_secret_access_key is not None
+    assert s.nebius_auth_pem is not None
+    secret = s.nebius_s3_secret_access_key.get_secret_value()
+    config = NebiusJobConfig(
+        project_id=str(s.nebius_project_id),
+        image=str(s.nebius_job_image),
+        bucket=str(s.nebius_bucket),
+        region=s.nebius_region,
+        platform=s.nebius_platform,
+        preset=s.nebius_preset,
+        s3_endpoint=s.nebius_s3_endpoint,
+        s3_access_key_id=str(s.nebius_s3_access_key_id),
+        s3_secret_access_key=secret,
+        preemptible=s.nebius_preemptible,
+        watchdog_s=s.nebius_watchdog_s,
+        price_per_hour_usd=s.nebius_price_per_hour_usd,
+        budget_usd=s.nebius_budget_usd,
+    )
+    tokens = NebiusTokenProvider(
+        ServiceAccountKey(
+            str(s.nebius_service_account_id), str(s.nebius_auth_key_id), s.nebius_auth_pem
+        )
+    )
+    store = Boto3ObjectStore(
+        config.bucket,
+        endpoint_url=config.s3_endpoint,
+        region=config.region,
+        access_key_id=config.s3_access_key_id,
+        secret_access_key=secret,
+    )
+    guard = SpendGuard(
+        s.kinesis_data_dir / "nebius_spend.json", config.budget_usd, config.price_per_hour_usd
+    )
+    runner_cls = NebiusSessionRunner if s.nebius_runner_mode == "session" else NebiusJobRunner
+    return runner_cls(NebiusJobsClient(tokens), store, config, guard)
+
+
 def build_runner(settings: Settings) -> JobRunner:
     if settings.kinesis_job_runner is RunnerKind.CONTAINER:
         return ContainerJobRunner(settings.kinesis_worker_image)
     if settings.kinesis_job_runner is RunnerKind.NEBIUS:
-        raise ValueError(
-            "KINESIS_JOB_RUNNER=nebius is not implemented yet (docs/PHASE6.md); "
-            "use local or container"
-        )
+        return build_nebius_runner(settings)
     return LocalJobRunner(_blender_bin(settings))
 
 

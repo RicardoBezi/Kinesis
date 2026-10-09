@@ -16,6 +16,11 @@ dependencies = [
   "prometheus-client>=0.21",
 ]
 
+[project.optional-dependencies]
+# Nebius Serverless Jobs runner (Phase 6): RS256 service-account JWTs and the S3-compatible
+# bucket that is mounted into each job as /work.
+nebius = ["cryptography>=43", "boto3>=1.35"]
+
 [build-system]
 requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"

@@ -191,9 +191,47 @@ async def test_original_hash_change_is_a_bug_alarm(
     assert any(r.message == "bug_alarm.original_action_modified" for r in caplog.records)
 
 
-@pytest.mark.skip(reason="Phase 6: NebiusJobRunner")
-async def test_serverless_job_failure_surfaces_error() -> None:
-    raise NotImplementedError
+async def test_serverless_job_failure_surfaces_error(make_service: Any, tmp_path: Any) -> None:
+    """FAILURE_MODES #19: a Nebius job that ends ERROR fails the node with the platform's reason."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    from kinesis.jobs.nebius.api import NebiusJobsClient
+    from kinesis.jobs.nebius.auth import NebiusTokenProvider, ServiceAccountKey
+    from kinesis.jobs.nebius.config import NebiusJobConfig, SpendGuard
+    from kinesis.jobs.nebius.runner import NebiusJobRunner
+    from kinesis.testing.fake_nebius import FakeNebius, Outcome
+
+    pem = tmp_path / "k.pem"
+    pem.write_bytes(
+        rsa.generate_private_key(public_exponent=65537, key_size=2048).private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+    )
+    fake = FakeNebius(
+        outcomes=[Outcome.NORMAL] + [Outcome.ERROR] * 3
+    )  # inspect ok, extract x3 fail
+    transport = fake.transport()
+    tokens = NebiusTokenProvider(ServiceAccountKey("sa", "kid", pem), transport=transport)
+
+    async def no_sleep(_: float) -> None:
+        return None
+
+    runner = NebiusJobRunner(
+        NebiusJobsClient(tokens, transport=transport),
+        fake.store,
+        NebiusJobConfig(project_id="p", image="img", bucket=fake.store.bucket),
+        SpendGuard(tmp_path / "spend.json", 5.0, None),
+        sleep=no_sleep,
+    )
+    job = await run_job(make_service(runner=runner))
+    assert job.status is JobStatus.FAILED
+    assert job.error is not None
+    assert job.error.code is ErrorCode.WORKER_CRASHED
+    assert job.error.node == "extract_scope"
+    assert "quota exceeded" in job.error.message
 
 
 # ------------------------------------------------------------------ infrastructure (#16, #20, #25)

@@ -1,10 +1,10 @@
 # Phase 6: serverless
 
-**Status: partly done (2026-10-09); blocked on an owner decision.**
+**Status: implementation complete (2026-10-09); live Nebius runs pending (account suspended).**
 
 **Done:** the containerized worker, and a `ContainerJobRunner` that runs it, are complete. The container gives **the same golden results as host Blender**, which a test checks on every nightly CI run.
 
-**Blocked:** `NebiusJobRunner`, the piece that would submit the same container to Nebius Serverless Jobs, needs a Nebius project, a decision to spend on compute, and the answers to spike S5. These are concern C2, and they can only come from the project owner.
+**Nebius Serverless Jobs:** two runners submit the same container to Nebius. `NebiusJobRunner` runs one Nebius job per worker step; `NebiusSessionRunner` runs one per Kinesis job. Both are implemented and contract-tested against the Nebius Serverless Jobs API. **Live runs are pending**, because the owner's Nebius AI Cloud account is suspended (concern C2). See [Nebius runners](#nebius-runners-implemented-and-contract-tested-live-runs-pending).
 
 ## Done
 
@@ -41,23 +41,100 @@ A job runs 6 worker commands, so start-up adds about 3 s. The rest of the gap co
 
 Either way, the results are identical.
 
-## Still to do: `NebiusJobRunner` (needs the owner)
+## Nebius runners: implemented and contract-tested; live runs pending
 
-The open questions are in [`infra/nebius/README.md`](../infra/nebius/README.md) (spike S5):
-1. the submission API and its authentication;
-2. image start-up latency for a 2 GB image, and whether the image is cached;
-3. how completion is signalled (polling or webhook);
-4. CPU and GPU instance shapes and their prices;
-5. which Object Storage client to use for exchanging artifacts.
+**Status (2026-10-09):** both Nebius runner designs are **implemented and contract-tested against the Nebius Serverless Jobs API**, using a fake API that follows the documented contract. **Live runs are pending:** the owner's Nebius AI Cloud account is suspended (payment failed), so there is no project, registry, bucket or service account. None of the cloud timings below are measured; they are marked **EXPECTED**.
 
-Answering them needs a Nebius project (`NEBIUS_PROJECT_ID`) and a decision to spend on Serverless compute. Once S5 is answered, the runner reuses these existing pieces:
-- the same image, pushed to a registry;
-- the same argv: `--command <enum> --spec /work/...`;
-- a job-directory upload and download through Object Storage;
-- the `JobRunner` contract: raise `WorkerTimeout` or `WorkerCrashed`, then return the result path.
+### The API contract followed (docs.nebius.com, verified 2026-10-09)
 
-The fault scenario `serverless_job_failure_surfaces_error` stays skipped until then.
+**Authentication**
+- A service-account authorized key signs an RS256 JWT: `kid` is the key id, `iss` and `sub` are the service account, and the JWT lives 5 minutes.
+- The JWT is exchanged with RFC 8693 at `https://auth.eu.nebius.com/oauth2/token/exchange` for a bearer token valid 12 hours.
+- Tokens are cached and refreshed early. A 401 triggers exactly one re-exchange.
 
-Two more things wait for that point:
-- the exit criterion "the same golden results on both runners", measured against Nebius;
-- the compute side of the cost-per-repair metric (C9).
+**Jobs REST API**
+
+| Call | Endpoint | Notes |
+|---|---|---|
+| Create | `POST https://api.nebius.cloud/ai/v1/jobs` | Returns an Operation whose `resourceId` is the job id |
+| Poll | `GET /ai/v1/jobs/{id}` | `status.state` moves through PROVISIONING → STARTING → IMAGE_PULLING → RUNNING → COMPLETED / FAILED / CANCELLED / ERROR |
+| Cancel | `POST /ai/v1/jobs/{id}:cancel` | |
+
+Completion is signalled by **polling only**.
+
+**Job spec**
+- `args` is a single string, `--command <enum> --spec /work/...`, under the image's fixed entrypoint.
+- `timeout` is `"3600s"`; that is the Nebius minimum.
+- `disk` is `{type: NETWORK_SSD, sizeBytes}`. It is set to 32 GiB; the default is 250 GiB, and disk is billed.
+- `restartAttempts` is `"0"`.
+- `pricingModel` is on-demand, or `followsSpotPrice` when preemptible.
+
+**Job I/O**
+- The job's bucket prefix is mounted as a volume at `/work`, with `source` = bucket, `sourcePath` = `kinesis/jobs/<job_id>/`, `READ_WRITE`, and `s3Config` pointing at `https://storage.us-central1.nebius.cloud`.
+- The worker's job-directory contract is therefore unchanged.
+- The API side uploads inputs and downloads outputs with boto3 (the `nebius` extra).
+
+### Design A vs design B
+
+| | A: `NebiusJobRunner` (default, `NEBIUS_RUNNER_MODE=job`) | B: `NebiusSessionRunner` (`NEBIUS_RUNNER_MODE=session`) |
+|---|---|---|
+| Nebius jobs per Kinesis job | One per worker step (about 7) | One per Kinesis job, plus one per upload inspect and one per export |
+| What runs in the container | The worker, with the same fixed argv as locally | `blender/worker/session.py`: watches `/work/queue/`, runs each request with the same fixed argv, writes `<id>.done.json`, and stops on `queue/STOP` or after 10 min idle |
+| Start-up cost | **EXPECTED:** paid on every step (a fresh VM plus a 2 GB image pull; image caching is not documented) | **EXPECTED:** paid once per Kinesis job |
+| Idle cost | None | **EXPECTED:** the VM idles between steps, bounded by the idle timeout |
+| Risks | Many provisioning waits | Relies on the bucket mount making new objects visible to the container promptly; **unverified** |
+| Recommendation | Start here: stateless and the simplest to debug | Switch once live runs show that per-step start-up dominates |
+
+Both designs share these safeguards:
+- **Watchdog.** A client-side watchdog (`NEBIUS_WATCHDOG_S`, default 900 s) cancels a job that runs too long, because Nebius' own minimum timeout is 1 h.
+- **Budget.** A `SpendGuard` (`NEBIUS_BUDGET_USD`, default $5) reserves the worst case before each submission, settles it from the job's real start and finish times, and refuses a run that would exceed the cap. It needs `NEBIUS_PRICE_PER_HOUR_USD` to estimate cost.
+- **Cancellation.** Cancelling a Kinesis job cancels the Nebius job.
+- **Retries.** A submission is retried twice on 429, 5xx or a timeout (FAILURE_MODES #19). A 4xx response is never retried.
+- **Failure reasons.** A job that ends `FAILED` or `ERROR` raises `WorkerCrashed` with the platform's reason. A worker-handled failure is reported as `WorkerReportedFailure`, as it is locally.
+- **Traces.** Per-state timestamps and the cost estimate go to `work/<node>.nebius.json` and are logged as `nebius.run`.
+- **Uploads.** Unchanged inputs (the scene, mostly) are not uploaded again.
+
+### Tests
+
+- **`tests/unit/test_nebius_runner.py` (23 tests), against the fake API in `kinesis.testing.fake_nebius`:**
+  - the JWT signature is verified with the public key, and the token is cached and refreshed after a 401;
+  - the job body matches the documented contract;
+  - the happy path records every state and the cost;
+  - a crashed container, a worker-handled failure, and a platform ERROR are each reported correctly;
+  - the watchdog cancels a hung job;
+  - polling backs off to its cap;
+  - cancelling the task cancels the Nebius job;
+  - a 503 or 429 on submit is retried, and a 400 is not;
+  - the budget guard refuses over-budget runs;
+  - a session serves every step in one job, ends early correctly, and handles failures;
+  - **a whole Kinesis job on each design produces metrics identical to the local runner.**
+- **Fault scenario #19** (`serverless_job_failure_surfaces_error`) is live. A quota `ERROR` fails `extract_scope` with the platform's reason.
+- **The session loop was run in the real worker image** against a local job directory. A queued inspect and extract both produced valid results, a request for a spec outside `/work` was refused (exit 2), and `STOP` ended the session.
+- **The live test** (`tests/integration/test_nebius_jobs_live.py`, marker `live_nebius_jobs`) runs one inspect step. It is skipped unless `KINESIS_LIVE_NEBIUS_JOBS=1` and the configuration is complete. Run it manually with `uv run task live-nebius-jobs-test`; it **costs money**.
+
+### Two bugs the tests found
+
+1. **Upload-time inspect leaked a session.** It started a session on the scene directory and never closed it, which on Nebius would have left a VM idling for 10 minutes. The service now releases runner resources after inspect, after the repair DAG, and after the export.
+2. **The fake API hid a state.** It advanced state before reporting it, so `PROVISIONING` was never observable. It now reports first, as a real first poll would.
+
+## To switch it on (owner)
+
+Once the Nebius account is active again:
+1. Create a project in `us-central1`, a container registry, a bucket, and a service account with an authorized key (save the PEM to `C:/Users/<you>/.nebius/kinesis-runner.pem`).
+2. Push the image: `uv run task worker-image`, then tag and push it to the registry.
+3. Put these in `.env`:
+   - `KINESIS_JOB_RUNNER=nebius`
+   - `NEBIUS_PROJECT_ID`
+   - `NEBIUS_JOB_IMAGE`
+   - `NEBIUS_BUCKET`
+   - `NEBIUS_S3_ACCESS_KEY_ID` / `NEBIUS_S3_SECRET_ACCESS_KEY`
+   - `NEBIUS_SERVICE_ACCOUNT_ID`
+   - `NEBIUS_AUTH_KEY_ID`
+   - `NEBIUS_AUTH_PEM`
+   - `NEBIUS_PRICE_PER_HOUR_USD` for `cpu-d3` / `4vcpu-16gb`
+   - and, if needed, `NEBIUS_RUNNER_MODE`, `NEBIUS_PLATFORM`, `NEBIUS_PRESET` and `NEBIUS_PREEMPTIBLE`.
+
+   The runner reports every missing value at once.
+4. Run `uv run task live-nebius-jobs-test`, then the golden parity job. Then replace the EXPECTED rows above with measured numbers.
+
+The compute side of C9 (cost per repair) follows from step 4.
